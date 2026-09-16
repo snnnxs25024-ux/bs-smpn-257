@@ -19,6 +19,7 @@ export default function Rekap() {
   const [filterYear, setFilterYear] = useState<string>(new Date().getFullYear().toString());
   
   const printRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Extract unique classes
   const uniqueClasses = sortClasses(Array.from(new Set(students.map(s => s.classId))));
@@ -54,12 +55,15 @@ export default function Rekap() {
     if (!element) return;
     
     try {
+      setIsExporting(true);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const canvas = await html2canvas(element, { 
         scale: 2, 
         useCORS: true, 
         allowTaint: true,
-        windowWidth: element.scrollWidth,
-        width: element.scrollWidth
+        windowWidth: 794,
+        width: 794
       });
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
       
@@ -78,6 +82,8 @@ export default function Rekap() {
       pdf.save(`Rekap_Kelas_${selectedClass}_${filterMonth}_${filterYear}.pdf`);
     } catch (err) {
       console.error("Error exporting PDF:", err);
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -86,12 +92,15 @@ export default function Rekap() {
     if (!element) return;
     
     try {
+      setIsExporting(true);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const canvas = await html2canvas(element, { 
         scale: 2, 
         useCORS: true, 
         allowTaint: true,
-        windowWidth: element.scrollWidth,
-        width: element.scrollWidth
+        windowWidth: 794,
+        width: 794
       });
       const link = document.createElement('a');
       link.download = `Rekap_Kelas_${selectedClass}_${filterMonth}_${filterYear}.jpeg`;
@@ -99,6 +108,8 @@ export default function Rekap() {
       link.click();
     } catch (err) {
       console.error("Error exporting JPEG:", err);
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -157,10 +168,15 @@ export default function Rekap() {
 
         {/* Printable Area */}
         <div className="overflow-x-auto sm:overflow-x-visible border border-gray-200 rounded-xl bg-gray-50 shadow-inner">
-          <div className="p-3 sm:p-10 min-w-0 sm:min-w-[700px] w-full inline-block bg-white rounded-xl" ref={printRef}>
+          <div 
+            className={`p-3 sm:p-10 inline-block bg-white rounded-xl ${
+              isExporting ? "w-[794px] min-w-[794px]" : "min-w-0 sm:min-w-[700px] w-full"
+            }`} 
+            ref={printRef}
+          >
             <div className="mb-0 pb-0">
               <div className="w-full">
-                <img src="https://i.imgur.com/S6mcib2.png" alt="Header Banner" className="w-full h-auto object-contain block mx-auto" crossOrigin="anonymous" />
+                <img src="https://i.imgur.com/e2tp2Js.png" alt="Header Banner" className="w-full h-auto object-contain block mx-auto" crossOrigin="anonymous" />
               </div>
             </div>
 
@@ -169,45 +185,67 @@ export default function Rekap() {
               <div>Bulan : {filterMonth} {filterYear}</div>
             </div>
 
-            <table className="w-full border-collapse border border-black mb-4">
-              <thead>
-                <tr className="sticky top-[-17px] sm:top-[-33px] z-20">
-                  <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-center text-[10px] sm:text-xs font-bold text-gray-900 uppercase w-10 sm:w-16 sticky top-[-17px] sm:top-[-33px] z-10">NO</th>
-                  <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-left text-[10px] sm:text-xs font-bold text-gray-900 uppercase sticky top-[-17px] sm:top-[-33px] z-10">NAMA</th>
-                  <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-center text-[10px] sm:text-xs font-bold text-gray-900 uppercase w-14 sm:w-28 sticky top-[-17px] sm:top-[-33px] z-10">MIJEL</th>
-                  <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-center text-[10px] sm:text-xs font-bold text-gray-900 uppercase w-14 sm:w-28 sticky top-[-17px] sm:top-[-33px] z-10">BS</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white">
-                {displayStudents.map((student, idx) => {
-                  const record = records.find(r => 
-                    r.studentId === student.id && 
-                    r.month === filterMonth && 
-                    r.year === filterYear
-                  );
-                  
-                  return (
-                    <tr key={student.id} className="hover:bg-gray-50">
-                      <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-gray-900 text-center" style={{ verticalAlign: 'middle' }}>{idx + 1}</td>
-                      <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-gray-900 font-semibold break-words" style={{ verticalAlign: 'middle' }}>{student.name}</td>
-                      <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-center font-bold" style={{ verticalAlign: 'middle' }}>
-                        {record?.mijel ? <span className="text-gray-900">✓</span> : <span className="text-gray-300">-</span>}
-                      </td>
-                      <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-center font-bold" style={{ verticalAlign: 'middle' }}>
-                        {record?.bs ? <span className="text-gray-900">✓</span> : <span className="text-gray-300">-</span>}
+            <div className={isExporting ? "" : "max-h-[380px] sm:max-h-none overflow-y-auto sm:overflow-visible relative border border-black mb-4 rounded-sm"}>
+              <table className="w-full border-collapse border-none">
+                <thead>
+                  <tr className="sticky top-0 z-20">
+                    <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-center text-[10px] sm:text-xs font-bold text-gray-900 uppercase w-10 sm:w-16 sticky top-0 z-10" style={{ verticalAlign: 'middle' }}>
+                      <div className="flex items-center justify-center min-h-[16px] leading-none">NO</div>
+                    </th>
+                    <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-left text-[10px] sm:text-xs font-bold text-gray-900 uppercase sticky top-0 z-10" style={{ verticalAlign: 'middle' }}>
+                      <div className="flex items-center min-h-[16px] leading-none">NAMA</div>
+                    </th>
+                    <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-center text-[10px] sm:text-xs font-bold text-gray-900 uppercase w-14 sm:w-28 sticky top-0 z-10" style={{ verticalAlign: 'middle' }}>
+                      <div className="flex items-center justify-center min-h-[16px] leading-none">MIJEL</div>
+                    </th>
+                    <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-center text-[10px] sm:text-xs font-bold text-gray-900 uppercase w-14 sm:w-28 sticky top-0 z-10" style={{ verticalAlign: 'middle' }}>
+                      <div className="flex items-center justify-center min-h-[16px] leading-none">BS</div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white">
+                  {displayStudents.map((student, idx) => {
+                    const record = records.find(r => 
+                      r.studentId === student.id && 
+                      r.month === filterMonth && 
+                      r.year === filterYear
+                    );
+                    
+                    return (
+                      <tr key={student.id} className="hover:bg-gray-50">
+                        <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-gray-900 text-center" style={{ verticalAlign: 'middle' }}>
+                          <div className="flex items-center justify-center min-h-[20px] leading-none">
+                            {idx + 1}
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-gray-900 font-semibold break-words" style={{ verticalAlign: 'middle' }}>
+                          <div className="flex items-center min-h-[20px] leading-tight">
+                            {student.name}
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-center font-bold" style={{ verticalAlign: 'middle' }}>
+                          <div className="flex items-center justify-center min-h-[20px] leading-none">
+                            {record?.mijel ? <span className="text-gray-900 text-base">✓</span> : <span className="text-gray-300">-</span>}
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-center font-bold" style={{ verticalAlign: 'middle' }}>
+                          <div className="flex items-center justify-center min-h-[20px] leading-none">
+                            {record?.bs ? <span className="text-gray-900 text-base">✓</span> : <span className="text-gray-300">-</span>}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {displayStudents.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-2 py-6 sm:px-4 sm:py-8 border border-black text-center text-sm text-gray-500">
+                        Tidak ada data siswa untuk kelas ini.
                       </td>
                     </tr>
-                  );
-                })}
-                {displayStudents.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="px-2 py-6 sm:px-4 sm:py-8 border border-black text-center text-sm text-gray-500">
-                      Tidak ada data siswa untuk kelas ini.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
 
             <div className="mt-4 text-xs font-semibold text-gray-900 space-y-1">
               <div>keterangan :</div>
