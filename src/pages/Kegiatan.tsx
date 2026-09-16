@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../store';
 import { ChevronRight, ArrowLeft, Save } from 'lucide-react';
-import { ActivityRecord } from '../types';
+import { ActivityRecord, sortClasses, parseGradeOrder } from '../types';
 
 interface KegiatanProps {
   onNavigate: (menu: string) => void;
@@ -16,7 +16,8 @@ const YEARS = ['2023', '2024', '2025', '2026', '2027'];
 export default function Kegiatan({ onNavigate }: KegiatanProps) {
   const { students, records, addRecords } = useAppStore();
   
-  const [step, setStep] = useState<1 | 2 | 3>(1); // 1: Period, 2: Class, 3: Students
+  const [step, setStep] = useState<1 | 2 | 2.5 | 3>(1); // 1: Period, 2: Level, 2.5: Sub-class, 3: Students
+  const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>(MONTHS[new Date().getMonth()]);
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
   const [selectedClass, setSelectedClass] = useState<string>('');
@@ -24,10 +25,37 @@ export default function Kegiatan({ onNavigate }: KegiatanProps) {
   // Local state for checkboxes before saving
   const [currentChecklist, setCurrentChecklist] = useState<Record<string, { mijel: boolean, bs: boolean }>>({});
 
-  const classes = Array.from(new Set(students.map(s => s.classId))).sort() as string[];
+  const classes = sortClasses(Array.from(new Set(students.map(s => s.classId))));
+
+  // Group by Grade Level
+  const levelsMap: { [level: string]: string[] } = {};
+  classes.forEach(cls => {
+    const trimmed = cls.trim();
+    const parts = trimmed.split(/[\s\-]+/);
+    const level = parts[0].toUpperCase();
+    if (!levelsMap[level]) {
+      levelsMap[level] = [];
+    }
+    levelsMap[level].push(cls);
+  });
+  Object.keys(levelsMap).forEach(lvl => {
+    levelsMap[lvl] = sortClasses(levelsMap[lvl]);
+  });
+  const levels = Object.keys(levelsMap).sort((a, b) => parseGradeOrder(a) - parseGradeOrder(b));
 
   const handlePeriodSelect = () => {
     setStep(2);
+  };
+
+  const handleLevelSelect = (level: string) => {
+    setSelectedLevel(level);
+    const subClasses = levelsMap[level] || [];
+    if (subClasses.length === 1) {
+      // If only 1 sub-class, go directly to it
+      handleClassSelect(subClasses[0]);
+    } else {
+      setStep(2.5);
+    }
   };
 
   const handleClassSelect = (classId: string) => {
@@ -133,29 +161,60 @@ export default function Kegiatan({ onNavigate }: KegiatanProps) {
                 <ArrowLeft size={20} />
               </button>
               <div>
-                <h2 className="text-lg font-medium text-gray-900">Pilih Kelas</h2>
+                <h2 className="text-lg font-medium text-gray-900">Pilih Tingkat Kelas</h2>
                 <p className="text-sm text-gray-500">Periode: {selectedMonth} {selectedYear}</p>
               </div>
             </div>
 
-            {classes.length === 0 ? (
+            {levels.length === 0 ? (
               <div className="text-center py-12 text-gray-500 text-sm">
                 Tidak ada data kelas. Silakan tambah siswa di menu Data Base.
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {classes.map(c => (
-                  <button
-                    key={c}
-                    onClick={() => handleClassSelect(c)}
-                    className="flex flex-col items-center justify-center p-6 border border-gray-200 rounded-xl hover:border-[#172D51] hover:bg-[#172D51]/5 hover:shadow-sm transition-all group"
-                  >
-                    <span className="text-xl font-bold text-gray-700 group-hover:text-[#172D51]">{c}</span>
-                    <span className="text-xs text-gray-400 mt-2">{students.filter(s => s.classId === c).length} Siswa</span>
-                  </button>
-                ))}
+                {levels.map(level => {
+                  const subClasses = levelsMap[level] || [];
+                  const totalStudentsInLevel = students.filter(s => subClasses.includes(s.classId)).length;
+                  return (
+                    <button
+                      key={level}
+                      onClick={() => handleLevelSelect(level)}
+                      className="flex flex-col items-center justify-center p-6 border border-gray-200 rounded-xl hover:border-[#172D51] hover:bg-[#172D51]/5 hover:shadow-sm transition-all group"
+                    >
+                      <span className="text-xl font-bold text-gray-700 group-hover:text-[#172D51]">Kelas {level}</span>
+                      <span className="text-xs text-gray-400 mt-2">{subClasses.length} Sub-Kelas • {totalStudentsInLevel} Siswa</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
+          </div>
+        )}
+
+        {step === 2.5 && (
+          <div>
+            <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100">
+              <button onClick={() => setStep(2)} className="p-2 -ml-2 text-gray-400 hover:text-gray-900 hover:bg-gray-50 rounded-md">
+                <ArrowLeft size={20} />
+              </button>
+              <div>
+                <h2 className="text-lg font-medium text-gray-900">Pilih Sub-Kelas Kelas {selectedLevel}</h2>
+                <p className="text-sm text-gray-500">Periode: {selectedMonth} {selectedYear}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {(levelsMap[selectedLevel || ''] || []).map(c => (
+                <button
+                  key={c}
+                  onClick={() => handleClassSelect(c)}
+                  className="flex flex-col items-center justify-center p-6 border border-gray-200 rounded-xl hover:border-[#172D51] hover:bg-[#172D51]/5 hover:shadow-sm transition-all group"
+                >
+                  <span className="text-xl font-bold text-gray-700 group-hover:text-[#172D51]">{c}</span>
+                  <span className="text-xs text-gray-400 mt-2">{students.filter(s => s.classId === c).length} Siswa</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -180,38 +239,38 @@ export default function Kegiatan({ onNavigate }: KegiatanProps) {
               </button>
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-gray-200">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+            <div className="overflow-x-auto rounded-lg">
+              <table className="w-full border-collapse border border-black">
+                <thead>
                   <tr>
-                    <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider w-12 border-r">No</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nama</th>
-                    <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider w-24">Mijel</th>
-                    <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider w-24">BS</th>
+                    <th scope="col" className="px-4 py-2.5 border border-black bg-[#F6B23D] text-center text-xs font-bold text-black uppercase w-16">NO</th>
+                    <th scope="col" className="px-4 py-2.5 border border-black bg-[#F6B23D] text-left text-xs font-bold text-black uppercase">NAMA</th>
+                    <th scope="col" className="px-4 py-2.5 border border-black bg-[#F6B23D] text-center text-xs font-bold text-black uppercase w-28">MIJEL</th>
+                    <th scope="col" className="px-4 py-2.5 border border-black bg-[#F6B23D] text-center text-xs font-bold text-black uppercase w-28">BS</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white">
                   {classStudents.map((student, idx) => (
                     <tr key={student.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-center border-r">{idx + 1}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{student.name}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-center">
+                      <td className="px-4 py-3 border border-black text-sm text-black text-center" style={{ verticalAlign: 'middle' }}>{idx + 1}</td>
+                      <td className="px-4 py-3 border border-black text-sm font-semibold text-black" style={{ verticalAlign: 'middle' }}>{student.name}</td>
+                      <td className="px-4 py-3 border border-black text-center" style={{ verticalAlign: 'middle' }}>
                         <div className="flex justify-center">
                           <input
                             type="checkbox"
                             checked={currentChecklist[student.id]?.mijel || false}
                             onChange={(e) => handleCheck(student.id, 'mijel', e.target.checked)}
-                            className="h-6 w-6 rounded border-gray-300 text-[#172D51] focus:ring-[#172D51] cursor-pointer"
+                            className="h-6 w-6 rounded border-black text-[#172D51] focus:ring-[#172D51] cursor-pointer"
                           />
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-center">
+                      <td className="px-4 py-3 border border-black text-center" style={{ verticalAlign: 'middle' }}>
                         <div className="flex justify-center">
                           <input
                             type="checkbox"
                             checked={currentChecklist[student.id]?.bs || false}
                             onChange={(e) => handleCheck(student.id, 'bs', e.target.checked)}
-                            className="h-6 w-6 rounded border-gray-300 text-[#172D51] focus:ring-[#172D51] cursor-pointer"
+                            className="h-6 w-6 rounded border-black text-[#172D51] focus:ring-[#172D51] cursor-pointer"
                           />
                         </div>
                       </td>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Student, ActivityRecord } from './types';
 import { showToast } from './components/NotificationToast';
+import { supabase } from './lib/supabase';
 
 export function useAppStore() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -11,21 +12,19 @@ export function useAppStore() {
     const fetchData = async () => {
       try {
         const [studentsRes, recordsRes] = await Promise.all([
-          fetch('/api/students'),
-          fetch('/api/records')
+          supabase.from('students').select('*'),
+          supabase.from('records').select('*')
         ]);
         
-        if (studentsRes.ok) {
-          const studentsData = await studentsRes.json();
-          setStudents(studentsData);
+        if (studentsRes.data) {
+          setStudents(studentsRes.data);
         }
-        if (recordsRes.ok) {
-          const recordsData = await recordsRes.json();
-          setRecords(recordsData);
+        if (recordsRes.data) {
+          setRecords(recordsRes.data);
         }
       } catch (error) {
         console.error("Error fetching data:", error);
-        showToast('Gagal memuat data dari server.', 'error');
+        showToast('Gagal memuat data dari database.', 'error');
       } finally {
         setLoading(false);
       }
@@ -37,15 +36,8 @@ export function useAppStore() {
   const saveStudents = async (newStudents: Student[]) => {
     setStudents(newStudents); // Optimistic UI update
     try {
-      const res = await fetch('/api/students', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ students: newStudents })
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Supabase Server Error');
-      }
+      const { error } = await supabase.from('students').upsert(newStudents);
+      if (error) throw error;
       showToast('Data siswa berhasil disimpan ke database!', 'success');
     } catch (error: any) {
       console.error("Error saving students:", error);
@@ -57,15 +49,8 @@ export function useAppStore() {
   const addStudent = async (newStudent: Student) => {
     setStudents(prev => [...prev, newStudent]);
     try {
-      const res = await fetch('/api/students', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ students: [newStudent] })
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Supabase Server Error');
-      }
+      const { error } = await supabase.from('students').upsert([newStudent]);
+      if (error) throw error;
       showToast('Siswa baru berhasil ditambahkan!', 'success');
     } catch (error: any) {
       console.error("Error adding student:", error);
@@ -77,15 +62,8 @@ export function useAppStore() {
   const updateStudent = async (updatedStudent: Student) => {
     setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
     try {
-      const res = await fetch('/api/students', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ students: [updatedStudent] })
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Supabase Server Error');
-      }
+      const { error } = await supabase.from('students').upsert([updatedStudent]);
+      if (error) throw error;
       showToast('Data siswa berhasil diperbarui!', 'success');
     } catch (error: any) {
       console.error("Error updating student:", error);
@@ -97,12 +75,10 @@ export function useAppStore() {
   const deleteStudent = async (id: string) => {
     setStudents(prev => prev.filter(s => s.id !== id)); // Optimistic UI update
     try {
-      const res = await fetch(`/api/students/${id}`, {
-        method: 'DELETE'
-      });
-      if (!res.ok) throw new Error('Gagal menghapus');
+      const { error } = await supabase.from('students').delete().eq('id', id);
+      if (error) throw error;
       showToast('Siswa berhasil dihapus.', 'success');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting student:", error);
       showToast('Gagal menghapus siswa.', 'error');
     }
@@ -111,14 +87,10 @@ export function useAppStore() {
   const saveRecords = async (newRecords: ActivityRecord[]) => {
     setRecords(newRecords);
     try {
-      const res = await fetch('/api/records', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ records: newRecords })
-      });
-      if (!res.ok) throw new Error('Gagal menyimpan rekap');
+      const { error } = await supabase.from('records').upsert(newRecords);
+      if (error) throw error;
       showToast('Catatan kegiatan berhasil disimpan!', 'success');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving records:", error);
       showToast('Gagal menyimpan catatan kegiatan.', 'error');
     }
@@ -137,16 +109,12 @@ export function useAppStore() {
     setRecords(updated); // Optimistic UI update
     
     try {
-      const res = await fetch('/api/records', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ records: newRecords }) // Just upsert the new ones
-      });
-      if (!res.ok) throw new Error('Gagal menyimpan rekap');
+      const { error } = await supabase.from('records').upsert(newRecords);
+      if (error) throw error;
       showToast(`Berhasil mencatat ${newRecords.length} data kegiatan!`, 'success');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving records:", error);
-      showToast('Gagal mencatat kegiatan ke server.', 'error');
+      showToast('Gagal mencatat kegiatan ke database.', 'error');
     }
   };
 
@@ -154,12 +122,10 @@ export function useAppStore() {
     setStudents([]);
     setRecords([]);
     try {
-      const res = await fetch('/api/students', {
-        method: 'DELETE'
-      });
-      if (!res.ok) throw new Error('Gagal mereset database');
+      await supabase.from('students').delete().neq('id', '0');
+      await supabase.from('records').delete().neq('id', '0');
       showToast('Database berhasil dikosongkan.', 'info');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error clearing database:", error);
       showToast('Gagal mengosongkan database.', 'error');
     }

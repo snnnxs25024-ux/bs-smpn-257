@@ -1,14 +1,20 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { useAppStore } from '../store';
-import { Upload, Download, Plus, Trash2, Edit2, X, Check, ArrowLeft, Users } from 'lucide-react';
+import { Upload, Download, Plus, Trash2, Edit2, X, Check, ArrowLeft, Users, Key, Settings } from 'lucide-react';
 import Papa from 'papaparse';
-import { Student } from '../types';
+import { Student, sortClasses } from '../types';
 import { showToast } from '../components/NotificationToast';
+import { getSupabaseCredentials, updateSupabaseClient } from '../lib/supabase';
 
 export default function Database() {
   const { students, saveStudents, addStudent, updateStudent, deleteStudent, clearDatabase } = useAppStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  const creds = getSupabaseCredentials();
+  const [supabaseUrlInput, setSupabaseUrlInput] = useState(creds.url);
+  const [supabaseKeyInput, setSupabaseKeyInput] = useState(creds.anonKey);
+  const [showConfig, setShowConfig] = useState(false);
+
   const [newName, setNewName] = useState('');
   const [newKelas, setNewKelas] = useState('');
   const [newHuruf, setNewHuruf] = useState('');
@@ -21,7 +27,7 @@ export default function Database() {
   const [editKelas, setEditKelas] = useState('');
   const [editHuruf, setEditHuruf] = useState('');
 
-  const existingClasses = Array.from(new Set(students.map(s => s.classId))).sort();
+  const existingClasses = sortClasses(Array.from(new Set(students.map(s => s.classId))));
 
   const handleQuickClassSelect = (classId: string) => {
     const parts = classId.trim().split(' ');
@@ -151,6 +157,8 @@ export default function Database() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    showToast(`Membaca file ${file.name}...`, 'info');
+
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
@@ -195,22 +203,20 @@ export default function Database() {
         });
 
         if (importedStudents.length > 0) {
-          if (confirm(`Ditemukan ${importedStudents.length} data siswa valid. Tambahkan ke database?`)) {
-            // Check for duplicates based on name and class
-            const existingKeys = new Set(students.map(s => `${s.name.toLowerCase()}-${s.classId.toLowerCase()}`));
-            const uniqueNewStudents = importedStudents.filter(s => !existingKeys.has(`${s.name.toLowerCase()}-${s.classId.toLowerCase()}`));
-            
-            if (uniqueNewStudents.length > 0) {
-              saveStudents([...students, ...uniqueNewStudents])
-                .then(() => {
-                  showToast(`Berhasil menambahkan ${uniqueNewStudents.length} siswa baru!`, 'success');
-                })
-                .catch((err: any) => {
-                  showToast(`Gagal menyimpan: ${err.message}`, 'error');
-                });
-            } else {
-              showToast('Semua data dalam CSV sudah ada di database (duplikat).', 'info');
-            }
+          // Check for duplicates based on name and class
+          const existingKeys = new Set(students.map(s => `${s.name.toLowerCase()}-${s.classId.toLowerCase()}`));
+          const uniqueNewStudents = importedStudents.filter(s => !existingKeys.has(`${s.name.toLowerCase()}-${s.classId.toLowerCase()}`));
+          
+          if (uniqueNewStudents.length > 0) {
+            saveStudents([...students, ...uniqueNewStudents])
+              .then(() => {
+                showToast(`Berhasil mengimpor ${uniqueNewStudents.length} siswa baru!`, 'success');
+              })
+              .catch((err: any) => {
+                showToast(`Gagal menyimpan: ${err.message}`, 'error');
+              });
+          } else {
+            showToast('Semua data dalam CSV sudah ada di database (duplikat).', 'info');
           }
         } else {
           showToast('Format file tidak valid atau data kosong. Pastikan kolom "nama", "kelas", dan "huruf" terisi.', 'error');
@@ -341,6 +347,56 @@ export default function Database() {
                 Hapus Seluruh Database
               </button>
             </div>
+          </div>
+
+          <div className="rounded-xl bg-white p-6 shadow-sm border border-gray-200 mt-6">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                <Settings size={16} className="text-[#172D51]" />
+                Pengaturan Supabase API Key
+              </h2>
+              <button
+                onClick={() => setShowConfig(!showConfig)}
+                className="text-xs text-[#172D51] font-medium hover:underline"
+              >
+                {showConfig ? 'Tutup' : 'Ubah Kunci'}
+              </button>
+            </div>
+            <p className="text-[11px] text-gray-500 mb-3">
+              Jika mengalami error API Key, masukkan Supabase URL dan Anon Key Anda di sini.
+            </p>
+            {showConfig && (
+              <div className="space-y-3 pt-2 border-t border-gray-100">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Supabase URL</label>
+                  <input
+                    type="text"
+                    value={supabaseUrlInput}
+                    onChange={(e) => setSupabaseUrlInput(e.target.value)}
+                    className="w-full rounded-md border-gray-300 py-1.5 text-xs text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 px-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Supabase Anon Key</label>
+                  <input
+                    type="password"
+                    value={supabaseKeyInput}
+                    onChange={(e) => setSupabaseKeyInput(e.target.value)}
+                    placeholder="eyJhbGci..."
+                    className="w-full rounded-md border-gray-300 py-1.5 text-xs text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 px-2"
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    updateSupabaseClient(supabaseUrlInput, supabaseKeyInput);
+                    showToast('Kunci Supabase berhasil diperbarui!', 'success');
+                  }}
+                  className="w-full rounded-lg bg-[#172D51] px-3 py-2 text-xs font-semibold text-white hover:bg-[#34456D] transition-colors"
+                >
+                  Simpan & Hubungkan
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

@@ -23,9 +23,9 @@ export default function Layout({ children, activeMenu, onNavigate, onLogout }: L
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans pb-20 lg:pb-0">
+    <div className="h-[100dvh] lg:h-auto lg:min-h-screen bg-gray-50 flex flex-col font-sans overflow-hidden lg:overflow-visible">
       {/* Top Header for Mobile */}
-      <div className="lg:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+      <div className="lg:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-30 shadow-sm shrink-0">
         <div className="flex items-center gap-2">
           <img src="https://i.imgur.com/2XP7suZ.png" alt="Logo" className="h-8 w-auto" />
           <span className="font-bold text-gray-900 text-sm">BANK SAMPAH</span>
@@ -39,7 +39,7 @@ export default function Layout({ children, activeMenu, onNavigate, onLogout }: L
         </button>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden lg:overflow-visible">
         {/* Sidebar Desktop */}
         <div className="hidden lg:flex flex-col z-40 w-64 h-screen sticky top-0 bg-white border-r border-gray-200">
           <div className="p-6 flex items-center gap-3 border-b border-gray-100">
@@ -105,7 +105,7 @@ export default function Layout({ children, activeMenu, onNavigate, onLogout }: L
         </div>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-4 lg:p-8">
+        <main className="flex-1 overflow-y-auto bg-gray-50 p-4 pb-28 lg:p-8">
           <div className="mx-auto max-w-5xl">
             {children}
           </div>

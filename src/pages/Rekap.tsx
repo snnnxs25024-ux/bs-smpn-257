@@ -3,6 +3,7 @@ import { useAppStore } from '../store';
 import { Download, FileImage, Calendar, Users, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { sortClasses, parseGradeOrder } from '../types';
 
 const MONTHS = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
@@ -19,23 +20,27 @@ export default function Rekap() {
   
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Extract unique classes (e.g. "7A", "7B", "8C")
-  const uniqueClasses = Array.from(new Set(students.map(s => s.classId))).sort();
+  // Extract unique classes
+  const uniqueClasses = sortClasses(Array.from(new Set(students.map(s => s.classId))));
 
-  // Group by Grade Level (e.g., first character or number like "7", "8", "9")
-  // Or if class format is "7A", level is "7". Let's extract the leading digits or default to the class string.
+  // Group by Grade Level (e.g. "IX" from "IX A", "7" from "7A")
   const levelsMap: { [level: string]: string[] } = {};
   uniqueClasses.forEach(cls => {
-    // Extract leading numbers or prefix as level (e.g. "7" from "7A" or "7-A")
-    const match = cls.match(/^(\d+|\D+)/);
-    const level = match ? match[1] : cls;
+    const trimmed = cls.trim();
+    const parts = trimmed.split(/[\s\-]+/);
+    const level = parts[0].toUpperCase();
     if (!levelsMap[level]) {
       levelsMap[level] = [];
     }
     levelsMap[level].push(cls);
   });
 
-  const levels = Object.keys(levelsMap).sort();
+  // Sort sub-classes within each level
+  Object.keys(levelsMap).forEach(lvl => {
+    levelsMap[lvl] = sortClasses(levelsMap[lvl]);
+  });
+
+  const levels = Object.keys(levelsMap).sort((a, b) => parseGradeOrder(a) - parseGradeOrder(b));
 
   // Filter students for the selected class
   let displayStudents = students;
@@ -151,8 +156,8 @@ export default function Rekap() {
         </div>
 
         {/* Printable Area */}
-        <div className="overflow-x-auto border border-gray-200 rounded-xl bg-gray-50 shadow-inner">
-          <div className="p-6 sm:p-10 min-w-[700px] w-full inline-block bg-white rounded-xl" ref={printRef}>
+        <div className="overflow-x-auto sm:overflow-x-visible border border-gray-200 rounded-xl bg-gray-50 shadow-inner">
+          <div className="p-3 sm:p-10 min-w-0 sm:min-w-[700px] w-full inline-block bg-white rounded-xl" ref={printRef}>
             <div className="mb-0 pb-0">
               <div className="w-full">
                 <img src="https://i.imgur.com/S6mcib2.png" alt="Header Banner" className="w-full h-auto object-contain block mx-auto" crossOrigin="anonymous" />
@@ -166,11 +171,11 @@ export default function Rekap() {
 
             <table className="w-full border-collapse border border-black mb-4">
               <thead>
-                <tr>
-                  <th scope="col" className="px-4 py-2.5 border border-black bg-[#F6B23D] text-center text-xs font-bold text-gray-900 uppercase w-16">NO</th>
-                  <th scope="col" className="px-4 py-2.5 border border-black bg-[#F6B23D] text-left text-xs font-bold text-gray-900 uppercase">NAMA</th>
-                  <th scope="col" className="px-4 py-2.5 border border-black bg-[#F6B23D] text-center text-xs font-bold text-gray-900 uppercase w-28">MIJEL</th>
-                  <th scope="col" className="px-4 py-2.5 border border-black bg-[#F6B23D] text-center text-xs font-bold text-gray-900 uppercase w-28">BS</th>
+                <tr className="sticky top-[-17px] sm:top-[-33px] z-20">
+                  <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-center text-[10px] sm:text-xs font-bold text-gray-900 uppercase w-10 sm:w-16 sticky top-[-17px] sm:top-[-33px] z-10">NO</th>
+                  <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-left text-[10px] sm:text-xs font-bold text-gray-900 uppercase sticky top-[-17px] sm:top-[-33px] z-10">NAMA</th>
+                  <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-center text-[10px] sm:text-xs font-bold text-gray-900 uppercase w-14 sm:w-28 sticky top-[-17px] sm:top-[-33px] z-10">MIJEL</th>
+                  <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-center text-[10px] sm:text-xs font-bold text-gray-900 uppercase w-14 sm:w-28 sticky top-[-17px] sm:top-[-33px] z-10">BS</th>
                 </tr>
               </thead>
               <tbody className="bg-white">
@@ -183,12 +188,12 @@ export default function Rekap() {
                   
                   return (
                     <tr key={student.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 border border-black text-sm text-gray-900 text-center" style={{ verticalAlign: 'middle' }}>{idx + 1}</td>
-                      <td className="px-4 py-3 border border-black text-sm text-gray-900 font-medium" style={{ verticalAlign: 'middle' }}>{student.name}</td>
-                      <td className="px-4 py-3 border border-black text-sm text-center font-bold" style={{ verticalAlign: 'middle' }}>
+                      <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-gray-900 text-center" style={{ verticalAlign: 'middle' }}>{idx + 1}</td>
+                      <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-gray-900 font-semibold break-words" style={{ verticalAlign: 'middle' }}>{student.name}</td>
+                      <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-center font-bold" style={{ verticalAlign: 'middle' }}>
                         {record?.mijel ? <span className="text-gray-900">✓</span> : <span className="text-gray-300">-</span>}
                       </td>
-                      <td className="px-4 py-3 border border-black text-sm text-center font-bold" style={{ verticalAlign: 'middle' }}>
+                      <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-center font-bold" style={{ verticalAlign: 'middle' }}>
                         {record?.bs ? <span className="text-gray-900">✓</span> : <span className="text-gray-300">-</span>}
                       </td>
                     </tr>
@@ -196,7 +201,7 @@ export default function Rekap() {
                 })}
                 {displayStudents.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-8 border border-black text-center text-sm text-gray-500">
+                    <td colSpan={4} className="px-2 py-6 sm:px-4 sm:py-8 border border-black text-center text-sm text-gray-500">
                       Tidak ada data siswa untuk kelas ini.
                     </td>
                   </tr>
