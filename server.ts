@@ -41,7 +41,10 @@ app.post('/api/students', async (req, res) => {
   if (!students || !Array.isArray(students)) return res.status(400).json({ error: 'Invalid students data' });
   
   const { data, error } = await supabase.from('students').upsert(students);
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) {
+    console.error("Supabase students upsert error:", error);
+    return res.status(500).json({ error: error.message });
+  }
   res.json({ success: true });
 });
 

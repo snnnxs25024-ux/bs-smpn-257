@@ -5,13 +5,19 @@ import Dashboard from './pages/Dashboard';
 import Kegiatan from './pages/Kegiatan';
 import Rekap from './pages/Rekap';
 import Database from './pages/Database';
+import NotificationToast from './components/NotificationToast';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeMenu, setActiveMenu] = useState('dashboard');
 
   if (!isAuthenticated) {
-    return <Login onLogin={() => setIsAuthenticated(true)} />;
+    return (
+      <>
+        <Login onLogin={() => setIsAuthenticated(true)} />
+        <NotificationToast />
+      </>
+    );
   }
 
   const renderContent = () => {
@@ -30,16 +36,19 @@ export default function App() {
   };
 
   return (
-    <Layout 
-      activeMenu={activeMenu} 
-      onNavigate={setActiveMenu}
-      onLogout={() => {
-        setIsAuthenticated(false);
-        setActiveMenu('dashboard');
-      }}
-    >
-      {renderContent()}
-    </Layout>
+    <>
+      <Layout 
+        activeMenu={activeMenu} 
+        onNavigate={setActiveMenu}
+        onLogout={() => {
+          setIsAuthenticated(false);
+          setActiveMenu('dashboard');
+        }}
+      >
+        {renderContent()}
+      </Layout>
+      <NotificationToast />
+    </>
   );
 }
 

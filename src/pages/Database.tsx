@@ -3,6 +3,7 @@ import { useAppStore } from '../store';
 import { Upload, Download, Plus, Trash2, Edit2, X, Check, ArrowLeft, Users } from 'lucide-react';
 import Papa from 'papaparse';
 import { Student } from '../types';
+import { showToast } from '../components/NotificationToast';
 
 export default function Database() {
   const { students, saveStudents, addStudent, updateStudent, deleteStudent, clearDatabase } = useAppStore();
@@ -202,17 +203,17 @@ export default function Database() {
             if (uniqueNewStudents.length > 0) {
               saveStudents([...students, ...uniqueNewStudents])
                 .then(() => {
-                  alert(`Berhasil menambahkan ${uniqueNewStudents.length} siswa baru. (${importedStudents.length - uniqueNewStudents.length} data duplikat dilewati).`);
+                  showToast(`Berhasil menambahkan ${uniqueNewStudents.length} siswa baru!`, 'success');
                 })
-                .catch(() => {
-                  alert('Gagal menyimpan! Pastikan Anda telah membuat tabel "students" dan "records" di SQL Editor Supabase Anda.');
+                .catch((err: any) => {
+                  showToast(`Gagal menyimpan: ${err.message}`, 'error');
                 });
             } else {
-              alert('Semua data dalam CSV sudah ada di database (duplikat).');
+              showToast('Semua data dalam CSV sudah ada di database (duplikat).', 'info');
             }
           }
         } else {
-          alert('Format file tidak valid atau data kosong. Pastikan ada kolom "nama", "kelas", dan "huruf".');
+          showToast('Format file tidak valid atau data kosong. Pastikan kolom "nama", "kelas", dan "huruf" terisi.', 'error');
         }
         
         // Reset file input
@@ -220,7 +221,7 @@ export default function Database() {
       },
       error: (error) => {
         console.error("Error parsing CSV:", error);
-        alert('Terjadi kesalahan saat membaca file CSV.');
+        showToast('Terjadi kesalahan saat membaca file CSV.', 'error');
       }
     });
   };
