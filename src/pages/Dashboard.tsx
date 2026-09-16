@@ -26,16 +26,16 @@ export default function Dashboard() {
         <p className="text-sm text-gray-500">Ringkasan data Bank Sampah SMPN 257 Jakarta.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
         {stats.map((stat) => (
-          <div key={stat.name} className="overflow-hidden rounded-xl bg-white p-4 sm:p-6 shadow-sm border border-gray-100 flex flex-col justify-between">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-2">
-              <div className={`rounded-lg p-2.5 sm:p-3 self-start sm:self-auto ${stat.bg}`}>
-                <stat.icon className={`h-5 w-5 sm:h-6 sm:w-6 ${stat.color}`} />
+          <div key={stat.name} className="overflow-hidden rounded-xl bg-white p-3 sm:p-6 shadow-sm border border-gray-100 flex flex-col justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-1">
+              <div className={`rounded-lg p-1.5 sm:p-3 self-start sm:self-auto ${stat.bg}`}>
+                <stat.icon className={`h-4 w-4 sm:h-6 sm:w-6 ${stat.color}`} />
               </div>
-              <p className="text-xs sm:text-sm font-medium text-gray-500 leading-tight">{stat.name}</p>
+              <p className="text-[10px] sm:text-sm font-medium text-gray-500 leading-tight">{stat.name}</p>
             </div>
-            <p className="mt-1 text-2xl sm:text-3xl font-bold text-gray-900">{stat.value}</p>
+            <p className="mt-1 text-lg sm:text-3xl font-bold text-gray-900">{stat.value}</p>
           </div>
         ))}
       </div>

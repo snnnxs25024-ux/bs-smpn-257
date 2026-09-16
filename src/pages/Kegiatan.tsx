@@ -171,7 +171,7 @@ export default function Kegiatan({ onNavigate }: KegiatanProps) {
                 Tidak ada data kelas. Silakan tambah siswa di menu Data Base.
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
                 {levels.map(level => {
                   const subClasses = levelsMap[level] || [];
                   const totalStudentsInLevel = students.filter(s => subClasses.includes(s.classId)).length;
@@ -179,10 +179,10 @@ export default function Kegiatan({ onNavigate }: KegiatanProps) {
                     <button
                       key={level}
                       onClick={() => handleLevelSelect(level)}
-                      className="flex flex-col items-center justify-center p-6 border border-gray-200 rounded-xl hover:border-[#172D51] hover:bg-[#172D51]/5 hover:shadow-sm transition-all group"
+                      className="flex flex-col items-center justify-center p-3 sm:p-6 border border-gray-200 rounded-xl hover:border-[#172D51] hover:bg-[#172D51]/5 hover:shadow-sm transition-all group"
                     >
-                      <span className="text-xl font-bold text-gray-700 group-hover:text-[#172D51]">Kelas {level}</span>
-                      <span className="text-xs text-gray-400 mt-2">{subClasses.length} Sub-Kelas • {totalStudentsInLevel} Siswa</span>
+                      <span className="text-base sm:text-xl font-bold text-gray-700 group-hover:text-[#172D51]">Kelas {level}</span>
+                      <span className="text-[10px] sm:text-xs text-gray-400 mt-1 text-center">{subClasses.length} Sub-Kelas • {totalStudentsInLevel} Siswa</span>
                     </button>
                   );
                 })}
@@ -203,15 +203,15 @@ export default function Kegiatan({ onNavigate }: KegiatanProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
               {(levelsMap[selectedLevel || ''] || []).map(c => (
                 <button
                   key={c}
                   onClick={() => handleClassSelect(c)}
-                  className="flex flex-col items-center justify-center p-6 border border-gray-200 rounded-xl hover:border-[#172D51] hover:bg-[#172D51]/5 hover:shadow-sm transition-all group"
+                  className="flex flex-col items-center justify-center p-3 sm:p-6 border border-gray-200 rounded-xl hover:border-[#172D51] hover:bg-[#172D51]/5 hover:shadow-sm transition-all group"
                 >
-                  <span className="text-xl font-bold text-gray-700 group-hover:text-[#172D51]">{c}</span>
-                  <span className="text-xs text-gray-400 mt-2">{students.filter(s => s.classId === c).length} Siswa</span>
+                  <span className="text-base sm:text-xl font-bold text-gray-700 group-hover:text-[#172D51]">{c}</span>
+                  <span className="text-[10px] sm:text-xs text-gray-400 mt-1 text-center">{students.filter(s => s.classId === c).length} Siswa</span>
                 </button>
               ))}
             </div>

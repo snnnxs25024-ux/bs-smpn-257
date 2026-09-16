@@ -406,20 +406,20 @@ export default function Database() {
             <div className="rounded-xl bg-white shadow-sm border border-gray-200 overflow-hidden h-full flex flex-col p-6 max-h-[600px] overflow-y-auto">
               <h2 className="text-lg font-medium text-gray-900 mb-6">Pilih Kelas</h2>
               {existingClasses.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                   {existingClasses.map(c => {
                     const count = students.filter(s => s.classId === c).length;
                     return (
                       <button
                         key={c}
                         onClick={() => setSelectedClass(c)}
-                        className="flex flex-col items-start justify-center p-4 rounded-xl border border-gray-200 hover:border-[#172D51] hover:bg-[#172D51]/5 transition-all text-left group"
+                        className="flex flex-col items-start justify-center p-3 sm:p-4 rounded-xl border border-gray-200 hover:border-[#172D51] hover:bg-[#172D51]/5 transition-all text-left group animate-fade-in"
                       >
-                        <div className="flex items-center gap-2 mb-2 text-gray-700 group-hover:text-[#172D51]">
-                          <Users size={20} />
-                          <span className="font-bold text-lg">{c}</span>
+                        <div className="flex items-center gap-1.5 mb-1 text-gray-700 group-hover:text-[#172D51]">
+                          <Users size={16} className="sm:w-5 sm:h-5" />
+                          <span className="font-bold text-sm sm:text-lg">{c}</span>
                         </div>
-                        <span className="text-sm text-gray-500">{count} Siswa</span>
+                        <span className="text-xs sm:text-sm text-gray-500">{count} Siswa</span>
                       </button>
                     );
                   })}

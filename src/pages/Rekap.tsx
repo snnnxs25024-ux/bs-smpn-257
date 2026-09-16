@@ -19,6 +19,7 @@ export default function Rekap() {
   const [filterYear, setFilterYear] = useState<string>(new Date().getFullYear().toString());
   
   const printRef = useRef<HTMLDivElement>(null);
+  const printAreaRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
   // Extract unique classes
@@ -51,34 +52,45 @@ export default function Rekap() {
   displayStudents = displayStudents.sort((a, b) => a.name.localeCompare(b.name));
 
   const exportPDF = async () => {
-    const element = printRef.current;
-    if (!element) return;
+    const printArea = printAreaRef.current;
+    if (!printArea) return;
     
     try {
       setIsExporting(true);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Wait for React to render the printable area offscreen
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      const canvas = await html2canvas(element, { 
-        scale: 2, 
-        useCORS: true, 
-        allowTaint: true,
-        windowWidth: 794,
-        width: 794
-      });
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
-      
+      const pages = printArea.querySelectorAll('.print-page');
+      if (pages.length === 0) return;
+
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
       });
       
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const margin = 10;
-      const printWidth = pdfWidth - (margin * 2);
-      const printHeight = (canvas.height * printWidth) / canvas.width;
+      for (let i = 0; i < pages.length; i++) {
+        const pageEl = pages[i] as HTMLElement;
+        const canvas = await html2canvas(pageEl, { 
+          scale: 3.125, // Produces highly crisp A4 (2481 x 3509 px at 300 DPI)
+          useCORS: true, 
+          allowTaint: true,
+          windowWidth: 794,
+          width: 794,
+          height: 1123,
+          backgroundColor: '#ffffff'
+        });
+        
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        
+        if (i > 0) {
+          pdf.addPage();
+        }
+        
+        // Fit perfectly onto standard A4 page (0 margins because padding is baked into the canvas image)
+        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+      }
       
-      pdf.addImage(imgData, 'JPEG', margin, margin, printWidth, printHeight);
       pdf.save(`Rekap_Kelas_${selectedClass}_${filterMonth}_${filterYear}.pdf`);
     } catch (err) {
       console.error("Error exporting PDF:", err);
@@ -88,24 +100,35 @@ export default function Rekap() {
   };
 
   const exportJPEG = async () => {
-    const element = printRef.current;
-    if (!element) return;
+    const printArea = printAreaRef.current;
+    if (!printArea) return;
     
     try {
       setIsExporting(true);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      const canvas = await html2canvas(element, { 
-        scale: 2, 
-        useCORS: true, 
-        allowTaint: true,
-        windowWidth: 794,
-        width: 794
-      });
-      const link = document.createElement('a');
-      link.download = `Rekap_Kelas_${selectedClass}_${filterMonth}_${filterYear}.jpeg`;
-      link.href = canvas.toDataURL('image/jpeg', 1.0);
-      link.click();
+      const pages = printArea.querySelectorAll('.print-page');
+      for (let i = 0; i < pages.length; i++) {
+        const pageEl = pages[i] as HTMLElement;
+        const canvas = await html2canvas(pageEl, { 
+          scale: 3.125, // For 300 DPI resolution (2481 x 3509 px)
+          useCORS: true, 
+          allowTaint: true,
+          windowWidth: 794,
+          width: 794,
+          height: 1123,
+          backgroundColor: '#ffffff'
+        });
+        
+        const link = document.createElement('a');
+        const pageSuffix = pages.length > 1 ? `_Halaman_${i + 1}` : '';
+        link.download = `Rekap_Kelas_${selectedClass}_${filterMonth}_${filterYear}${pageSuffix}.jpeg`;
+        link.href = canvas.toDataURL('image/jpeg', 1.0);
+        link.click();
+        
+        // Prevent browser from blocking multiple quick downloads
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
     } catch (err) {
       console.error("Error exporting JPEG:", err);
     } finally {
@@ -115,6 +138,15 @@ export default function Rekap() {
 
   // If a specific class is selected, show the month selector & report view
   if (selectedClass) {
+    const ITEMS_PER_PAGE = 22;
+    const studentChunks: (typeof displayStudents)[] = [];
+    for (let i = 0; i < displayStudents.length; i += ITEMS_PER_PAGE) {
+      studentChunks.push(displayStudents.slice(i, i + ITEMS_PER_PAGE));
+    }
+    if (studentChunks.length === 0) {
+      studentChunks.push([]);
+    }
+
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -127,13 +159,15 @@ export default function Rekap() {
           <div className="flex items-center gap-2">
             <button
               onClick={exportPDF}
-              className="flex items-center gap-2 rounded-lg bg-[#172D51] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#34456D] transition-colors"
+              disabled={isExporting}
+              className="flex items-center gap-2 rounded-lg bg-[#172D51] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#34456D] transition-colors disabled:opacity-50"
             >
               <Download size={16} /> Unduh PDF
             </button>
             <button
               onClick={exportJPEG}
-              className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-colors"
+              disabled={isExporting}
+              className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
               <FileImage size={16} /> Unduh JPEG
             </button>
@@ -169,9 +203,7 @@ export default function Rekap() {
         {/* Printable Area */}
         <div className="overflow-x-auto sm:overflow-x-visible border border-gray-200 rounded-xl bg-gray-50 shadow-inner">
           <div 
-            className={`p-3 sm:p-10 inline-block bg-white rounded-xl ${
-              isExporting ? "w-[794px] min-w-[794px]" : "min-w-0 sm:min-w-[700px] w-full"
-            }`} 
+            className="p-3 sm:p-10 inline-block bg-white rounded-xl min-w-0 sm:min-w-[700px] w-full" 
             ref={printRef}
           >
             <div className="mb-0 pb-0">
@@ -185,7 +217,7 @@ export default function Rekap() {
               <div>Bulan : {filterMonth} {filterYear}</div>
             </div>
 
-            <div className={isExporting ? "" : "max-h-[380px] sm:max-h-none overflow-y-auto sm:overflow-visible relative border border-black mb-4 rounded-sm"}>
+            <div className="max-h-[380px] sm:max-h-none overflow-y-auto sm:overflow-visible relative border border-black mb-4 rounded-sm">
               <table className="w-full border-collapse border-none">
                 <thead>
                   <tr className="sticky top-0 z-20">
@@ -254,6 +286,119 @@ export default function Rekap() {
             </div>
           </div>
         </div>
+
+        {/* Hidden Off-Screen Dedicated Multi-Page Print Layout (Guarantees A4 Margins & High-DPI Output) */}
+        {isExporting && (
+          <div 
+            ref={printAreaRef} 
+            style={{ 
+              position: 'absolute', 
+              left: '-9999px', 
+              top: '0px', 
+              width: '794px', 
+              zIndex: -100, 
+              backgroundColor: '#ffffff' 
+            }}
+          >
+            {studentChunks.map((chunk, chunkIdx) => (
+              <div 
+                key={chunkIdx}
+                className="print-page bg-white relative box-border flex flex-col justify-between"
+                style={{
+                  width: '794px',
+                  height: '1123px',
+                  padding: '45px', // Exact 45px padding yields standard ~12mm physical margin on A4 print setups
+                  backgroundColor: '#ffffff'
+                }}
+              >
+                <div>
+                  {/* Header Banner - aspect-ratio perfectly preserved */}
+                  <div className="w-full mb-6">
+                    <img 
+                      src="https://i.imgur.com/e2tp2Js.png" 
+                      alt="Header Banner" 
+                      className="w-full h-auto object-contain block mx-auto" 
+                      crossOrigin="anonymous" 
+                    />
+                  </div>
+
+                  {/* Meta info */}
+                  <div className="mb-4 text-sm font-bold text-gray-900 space-y-0.5" style={{ marginTop: '4px' }}>
+                    <div>Kelas : {selectedClass}</div>
+                    <div>Bulan : {filterMonth} {filterYear}</div>
+                  </div>
+
+                  {/* Table with crisp alignments */}
+                  <table className="w-full border-collapse border border-black text-xs">
+                    <thead>
+                      <tr>
+                        <th scope="col" className="px-3 py-2 border border-black bg-[#F6B23D] text-center font-bold text-gray-900 uppercase w-12" style={{ verticalAlign: 'middle' }}>
+                          <div className="flex items-center justify-center min-h-[16px] leading-none">NO</div>
+                        </th>
+                        <th scope="col" className="px-3 py-2 border border-black bg-[#F6B23D] text-left font-bold text-gray-900 uppercase" style={{ verticalAlign: 'middle' }}>
+                          <div className="flex items-center min-h-[16px] leading-none">NAMA</div>
+                        </th>
+                        <th scope="col" className="px-3 py-2 border border-black bg-[#F6B23D] text-center font-bold text-gray-900 uppercase w-24" style={{ verticalAlign: 'middle' }}>
+                          <div className="flex items-center justify-center min-h-[16px] leading-none">MIJEL</div>
+                        </th>
+                        <th scope="col" className="px-3 py-2 border border-black bg-[#F6B23D] text-center font-bold text-gray-900 uppercase w-24" style={{ verticalAlign: 'middle' }}>
+                          <div className="flex items-center justify-center min-h-[16px] leading-none">BS</div>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white">
+                      {chunk.map((student, idx) => {
+                        const globalIndex = chunkIdx * ITEMS_PER_PAGE + idx + 1;
+                        const record = records.find(r => 
+                          r.studentId === student.id && 
+                          r.month === filterMonth && 
+                          r.year === filterYear
+                        );
+                        
+                        return (
+                          <tr key={student.id}>
+                            <td className="px-3 py-1.5 border border-black text-gray-900 text-center" style={{ verticalAlign: 'middle' }}>
+                              <div className="flex items-center justify-center min-h-[22px] leading-none">
+                                {globalIndex}
+                              </div>
+                            </td>
+                            <td className="px-3 py-1.5 border border-black text-gray-900 font-semibold break-words" style={{ verticalAlign: 'middle' }}>
+                              <div className="flex items-center min-h-[22px] leading-tight">
+                                {student.name}
+                              </div>
+                            </td>
+                            <td className="px-3 py-1.5 border border-black text-center font-bold" style={{ verticalAlign: 'middle' }}>
+                              <div className="flex items-center justify-center min-h-[22px] leading-none">
+                                {record?.mijel ? <span className="text-gray-900 text-sm">✓</span> : <span className="text-gray-300">-</span>}
+                              </div>
+                            </td>
+                            <td className="px-3 py-1.5 border border-black text-center font-bold" style={{ verticalAlign: 'middle' }}>
+                              <div className="flex items-center justify-center min-h-[22px] leading-none">
+                                {record?.bs ? <span className="text-gray-900 text-sm">✓</span> : <span className="text-gray-300">-</span>}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Footer Keterangan & Paginasi */}
+                <div className="border-t border-gray-200 pt-3 flex items-end justify-between text-xs font-semibold text-gray-500">
+                  <div className="space-y-1">
+                    <div>keterangan :</div>
+                    <div>mijel : minyak jelantah</div>
+                    <div>bs : bank sampah</div>
+                  </div>
+                  <div>
+                    Halaman {chunkIdx + 1} dari {studentChunks.length}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -277,7 +422,7 @@ export default function Rekap() {
           <p className="text-sm text-gray-500">Pilih sub-kelas di bawah ini untuk melihat rekapitulasi bulanan siswa.</p>
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2.5 sm:gap-4">
           {subClasses.map((cls) => {
             const classStudentsCount = students.filter(s => s.classId === cls).length;
 
@@ -285,17 +430,17 @@ export default function Rekap() {
               <div 
                 key={cls}
                 onClick={() => setSelectedClass(cls)}
-                className="group relative bg-white rounded-xl p-5 shadow-sm border border-gray-200 hover:border-[#172D51] hover:shadow-md transition-all cursor-pointer flex items-center justify-between"
+                className="group relative bg-white rounded-xl p-3 sm:p-5 shadow-sm border border-gray-200 hover:border-[#172D51] hover:shadow-md transition-all cursor-pointer flex items-center justify-between animate-fade-in"
               >
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">Kelas {cls}</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <h3 className="text-sm sm:text-lg font-bold text-gray-900">Kelas {cls}</h3>
+                  <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
                     {classStudentsCount} Siswa terdaftar
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 group-hover:bg-[#172D51]/10 group-hover:text-[#172D51] transition-colors">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] sm:text-xs font-semibold px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-gray-100 text-gray-700 group-hover:bg-[#172D51]/10 group-hover:text-[#172D51] transition-colors">
                     Buka Rekapitulasi →
                   </span>
                 </div>
@@ -322,7 +467,7 @@ export default function Rekap() {
           <p className="text-sm text-gray-500 mt-1">Tambahkan data siswa terlebih dahulu melalui menu Data Siswa.</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2.5 sm:gap-4">
           {levels.map((level) => {
             const subClasses = levelsMap[level];
             const totalStudentsInLevel = students.filter(s => subClasses.includes(s.classId)).length;
@@ -331,17 +476,17 @@ export default function Rekap() {
               <div 
                 key={level}
                 onClick={() => setSelectedLevel(level)}
-                className="group relative bg-white rounded-xl p-5 shadow-sm border border-gray-200 hover:border-[#172D51] hover:shadow-md transition-all cursor-pointer flex items-center justify-between"
+                className="group relative bg-white rounded-xl p-3 sm:p-5 shadow-sm border border-gray-200 hover:border-[#172D51] hover:shadow-md transition-all cursor-pointer flex items-center justify-between animate-fade-in"
               >
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">Kelas {level}</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <h3 className="text-sm sm:text-lg font-bold text-gray-900">Kelas {level}</h3>
+                  <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
                     Total Kelas: {subClasses.length} Sub-Kelas ({subClasses.join(', ')}) • {totalStudentsInLevel} Siswa
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 group-hover:bg-[#172D51]/10 group-hover:text-[#172D51] transition-colors">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] sm:text-xs font-semibold px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-gray-100 text-gray-700 group-hover:bg-[#172D51]/10 group-hover:text-[#172D51] transition-colors">
                     Lihat Sub-Kelas →
                   </span>
                 </div>

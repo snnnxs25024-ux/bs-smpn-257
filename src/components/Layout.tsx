@@ -6,6 +6,7 @@ import {
   Database,
   LogOut
 } from 'lucide-react';
+import PWAInstallButton from './PWAInstallButton';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -30,13 +31,16 @@ export default function Layout({ children, activeMenu, onNavigate, onLogout }: L
           <img src="https://i.imgur.com/2XP7suZ.png" alt="Logo" className="h-8 w-auto" />
           <span className="font-bold text-gray-900 text-sm">BANK SAMPAH</span>
         </div>
-        <button 
-          onClick={onLogout}
-          className="text-red-600 hover:bg-red-50 p-2 rounded-full transition-colors"
-          title="Keluar"
-        >
-          <LogOut size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+          <PWAInstallButton />
+          <button 
+            onClick={onLogout}
+            className="text-red-600 hover:bg-red-50 p-2 rounded-full transition-colors"
+            title="Keluar"
+          >
+            <LogOut size={20} />
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden lg:overflow-visible">
@@ -70,7 +74,10 @@ export default function Layout({ children, activeMenu, onNavigate, onLogout }: L
             })}
           </nav>
 
-          <div className="p-4 border-t border-gray-100">
+          <div className="p-4 border-t border-gray-100 space-y-3">
+            <div className="w-full flex justify-center">
+              <PWAInstallButton />
+            </div>
             <button
               onClick={onLogout}
               className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-md text-red-600 hover:bg-red-50 transition-colors"
