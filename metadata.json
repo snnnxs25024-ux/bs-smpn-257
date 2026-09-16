@@ -1,0 +1,6 @@
+{
+  "name": "Bank Sampah SMPN 257",
+  "description": "Aplikasi pendataan Minyak Jelantah (Mijel) dan Bank Sampah (BS) SMPN 257 Jakarta",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
