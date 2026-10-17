@@ -13,9 +13,14 @@ import {
   Edit2,
   Filter,
   DollarSign,
-  Clock
+  Clock,
+  FileDown,
+  Loader2
 } from 'lucide-react';
 import Papa from 'papaparse';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { showToast } from './NotificationToast';
 
 const DEFAULT_MEMBERS = [
   'Lintang',
@@ -270,6 +275,245 @@ export default function CashTableCard() {
     setShowAddForm(false);
   };
 
+  const printRef = React.useRef<HTMLDivElement>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  // Export to Professional Native Vector PDF (Not a screenshot/printscreen)
+  const handleDownloadPDF = () => {
+    if (filteredMembers.length === 0) {
+      showToast('Tidak ada data untuk diunduh ke PDF.', 'info');
+      return;
+    }
+
+    setIsExportingPdf(true);
+    showToast('Membuat dokumen PDF resmi...', 'info');
+
+    try {
+      // Landscape A4: 297mm x 210mm
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageWidth = doc.internal.pageSize.getWidth(); // 297mm
+      const leftMargin = 14;
+      const rightMargin = 14;
+      const printableWidth = pageWidth - leftMargin - rightMargin;
+
+      // 1. KOP SURAT RESMI SEKOLAH (Vector Typography & Rules)
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(30, 41, 59);
+      doc.text('PEMERINTAH PROVINSI DAERAH KHUSUS IBUKOTA JAKARTA', pageWidth / 2, 13, { align: 'center' });
+      
+      doc.setFontSize(10);
+      doc.text('DINAS PENDIDIKAN', pageWidth / 2, 18, { align: 'center' });
+
+      doc.setFontSize(15);
+      doc.setTextColor(23, 45, 81); // #172D51
+      doc.text('SMP NEGERI 257 JAKARTA', pageWidth / 2, 24, { align: 'center' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text('Jl. Balai Rakyat No. 49, Ciracas, Kota Jakarta Timur, DKI Jakarta • Telp: (021) 8710257', pageWidth / 2, 29, { align: 'center' });
+
+      // Garis Ganda Kop Surat (Official Double Border)
+      doc.setDrawColor(23, 45, 81);
+      doc.setLineWidth(0.8);
+      doc.line(leftMargin, 32, pageWidth - rightMargin, 32);
+
+      doc.setDrawColor(71, 85, 105);
+      doc.setLineWidth(0.25);
+      doc.line(leftMargin, 33, pageWidth - rightMargin, 33);
+
+      // 2. JUDUL DOKUMEN & METADATA
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(17, 24, 39);
+      doc.text('LAPORAN REKAPITULASI PEMBAYARAN UANG KAS WALI MURID', pageWidth / 2, 40, { align: 'center' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(55, 65, 81);
+
+      const filterClassText = selectedClassFilter === 'SEMUA' ? 'Semua Kelas' : `Kelas ${selectedClassFilter}`;
+      doc.text(`Tahun Ajaran / Periode : ${selectedYear}`, leftMargin, 46);
+      doc.text(`Filter Kelas : ${filterClassText}`, leftMargin + 80, 46);
+      
+      const printDateStr = new Date().toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+      doc.text(`Tanggal Cetak : ${printDateStr}`, pageWidth - rightMargin, 46, { align: 'right' });
+
+      // 3. MENYUSUN DATA TABEL UNTUK AUTOTABLE
+      // Header Kolom
+      const headColumns = [
+        'NO',
+        'NAMA WALI MURID',
+        'KELAS',
+        ...visibleMonths.map(m => (SHORT_ALL_MONTHS[m] || m).toUpperCase()),
+        'TOTAL KAS'
+      ];
+
+      // Baris Data Body
+      const bodyRows: any[][] = filteredMembers.map((m, idx) => {
+        let memberTotal = 0;
+        let lunasMonthsCount = 0;
+
+        const monthCells = visibleMonths.map(month => {
+          const rec = getRecord(m.parentName, m.classId, month);
+          if (rec && rec.paid) {
+            memberTotal += (rec.amount || 0);
+            lunasMonthsCount++;
+            const nominalFormatted = (rec.amount || 0) >= 1000 ? `${(rec.amount || 0) / 1000}k` : `${rec.amount || 0}`;
+            return `LUNAS\n(Rp ${nominalFormatted})`;
+          }
+          return '-';
+        });
+
+        return [
+          idx + 1,
+          m.parentName,
+          m.classId,
+          ...monthCells,
+          `Rp ${memberTotal.toLocaleString('id-ID')}\n(${lunasMonthsCount}/${visibleMonths.length} bln)`
+        ];
+      });
+
+      // Baris Ringkasan Footer
+      const footerCells: any[] = [
+        { content: 'TOTAL KAS MASUK', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } }
+      ];
+
+      visibleMonths.forEach(month => {
+        let monthTotal = 0;
+        let count = 0;
+        filteredMembers.forEach(m => {
+          const rec = getRecord(m.parentName, m.classId, month);
+          if (rec && rec.paid) {
+            monthTotal += (rec.amount || 0);
+            count++;
+          }
+        });
+
+        footerCells.push({
+          content: count > 0 ? `${count} Org\nRp ${(monthTotal / 1000)}k` : '-',
+          styles: { halign: 'center', fontStyle: 'bold' }
+        });
+      });
+
+      footerCells.push({
+        content: `Rp ${stats.totalNominal.toLocaleString('id-ID')}`,
+        styles: { halign: 'center', fontStyle: 'bold', fillColor: [246, 178, 61], textColor: [17, 24, 39] }
+      });
+
+      // 4. GENERATE AUTOTABLE DENGAN DESAIN RESMI BERSIH
+      autoTable(doc, {
+        head: [headColumns],
+        body: bodyRows,
+        foot: [footerCells],
+        startY: 50,
+        margin: { left: leftMargin, right: rightMargin },
+        theme: 'grid',
+        styles: {
+          fontSize: 7.5,
+          cellPadding: 2,
+          valign: 'middle',
+          font: 'helvetica',
+          lineColor: [209, 213, 219], // #d1d5db
+          lineWidth: 0.15
+        },
+        headStyles: {
+          fillColor: [23, 45, 81], // #172D51
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center',
+          fontSize: 8
+        },
+        footStyles: {
+          fillColor: [243, 244, 246],
+          textColor: [17, 24, 39],
+          fontSize: 7.5
+        },
+        alternateRowStyles: {
+          fillColor: [249, 250, 251] // Zebra striping halus
+        },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 10 }, // NO
+          1: { halign: 'left', fontStyle: 'bold', cellWidth: 42 }, // NAMA WALI
+          2: { halign: 'center', cellWidth: 16 }, // KELAS
+          // Bulan-bulan diatur center
+          ...visibleMonths.reduce((acc: any, _, i) => {
+            acc[3 + i] = { halign: 'center' };
+            return acc;
+          }, {}),
+          [3 + visibleMonths.length]: { halign: 'center', fontStyle: 'bold', cellWidth: 30 } // TOTAL
+        },
+        didParseCell: (data) => {
+          // Highlight lunas cell text color
+          if (data.section === 'body' && typeof data.cell.raw === 'string' && data.cell.raw.includes('LUNAS')) {
+            data.cell.styles.textColor = [4, 120, 87]; // Emerald dark
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
+      });
+
+      // 5. BLOK TANDA TANGAN RESMI (SIGNATURE SECTION)
+      const finalY = (doc as any).lastAutoTable.finalY || 160;
+      let signatureY = finalY + 12;
+
+      // Jika ruang tidak cukup di halaman yang sama, buat halaman baru untuk tanda tangan
+      if (signatureY + 38 > 200) {
+        doc.addPage();
+        signatureY = 20;
+      }
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(30, 41, 59);
+
+      // Sisi Kiri: Wali Kelas
+      doc.text('Mengetahui,', leftMargin + 25, signatureY, { align: 'center' });
+      doc.text('Wali Kelas', leftMargin + 25, signatureY + 5, { align: 'center' });
+
+      doc.line(leftMargin + 5, signatureY + 28, leftMargin + 45, signatureY + 28);
+      doc.text('( ................................................ )', leftMargin + 25, signatureY + 33, { align: 'center' });
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text('NIP. ........................................', leftMargin + 25, signatureY + 37, { align: 'center' });
+
+      // Sisi Kanan: Bendahara Kelas
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(30, 41, 59);
+      const rightX = pageWidth - rightMargin - 30;
+      doc.text(`Jakarta, ${printDateStr}`, rightX, signatureY, { align: 'center' });
+      doc.text('Bendahara Kelas', rightX, signatureY + 5, { align: 'center' });
+
+      doc.line(rightX - 20, signatureY + 28, rightX + 20, signatureY + 28);
+      doc.text('( ................................................ )', rightX, signatureY + 33, { align: 'center' });
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text('Pengelola Uang Kas', rightX, signatureY + 37, { align: 'center' });
+
+      // 6. SIMPAN DOKUMEN PDF VEKTOR
+      const cleanClass = selectedClassFilter.replace(/\s+/g, '_');
+      const fileName = `Laporan_Uang_Kas_SMPN257_${cleanClass}_${selectedYear}.pdf`;
+      doc.save(fileName);
+
+      showToast('PDF resmi berhasil diunduh dengan kualitas vektor jernih!', 'success');
+    } catch (error: any) {
+      console.error('Error generating PDF:', error);
+      showToast('Gagal membuat PDF: ' + (error.message || 'Terjadi kesalahan'), 'error');
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   // Export to CSV
   const handleExportCSV = () => {
     if (filteredMembers.length === 0) return;
@@ -340,6 +584,24 @@ export default function CashTableCard() {
             >
               <Plus size={16} />
               Tambah Wali Murid
+            </button>
+            <button
+              onClick={handleDownloadPDF}
+              disabled={isExportingPdf}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 shadow-sm transition-colors disabled:opacity-60"
+              title="Unduh Lembar Rekap Uang Kas ke format PDF"
+            >
+              {isExportingPdf ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Membuat PDF...
+                </>
+              ) : (
+                <>
+                  <FileDown size={16} />
+                  Download PDF
+                </>
+              )}
             </button>
             <button
               onClick={handleExportCSV}
@@ -472,21 +734,22 @@ export default function CashTableCard() {
         )}
       </div>
 
-      {/* Spreadsheet / Excel Matrix Table */}
-      <div className="overflow-x-auto max-h-[580px] overflow-y-auto">
-        <table className="w-full border-collapse text-left text-xs font-sans">
-          {/* Header Rows */}
-          <thead className="bg-[#172D51] text-white sticky top-0 z-20 shadow-sm select-none">
-            <tr className="divide-x divide-[#233f6e]">
-              <th scope="col" className="px-3 py-3 font-bold text-center w-12 tracking-wider">
-                NO
-              </th>
-              <th scope="col" className="px-4 py-3 font-bold min-w-[180px] tracking-wider">
-                NAMA WALI MURID
-              </th>
-              <th scope="col" className="px-3 py-3 font-bold text-center w-24 tracking-wider">
-                KELAS
-              </th>
+      {/* Spreadsheet / Excel Matrix Table Container */}
+      <div className="bg-white p-2 sm:p-4">
+        <div className="overflow-x-auto max-h-[580px] overflow-y-auto">
+          <table className="w-full border-collapse text-left text-xs font-sans">
+            {/* Header Rows */}
+            <thead className="bg-[#172D51] text-white sticky top-0 z-20 shadow-sm select-none">
+              <tr className="divide-x divide-[#233f6e]">
+                <th scope="col" className="px-3 py-3 font-bold text-center w-12 tracking-wider">
+                  NO
+                </th>
+                <th scope="col" className="px-4 py-3 font-bold min-w-[180px] tracking-wider">
+                  NAMA WALI MURID
+                </th>
+                <th scope="col" className="px-3 py-3 font-bold text-center w-24 tracking-wider">
+                  KELAS
+                </th>
               {visibleMonths.map((mName) => (
                 <th 
                   key={mName} 
@@ -721,29 +984,29 @@ export default function CashTableCard() {
         </table>
       </div>
 
-      {/* Table Legend and Notes */}
-      <div className="p-3 sm:p-4 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 text-[11px] text-gray-600">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-1.5">
-            <div className="h-4 w-4 rounded bg-emerald-600 text-white flex items-center justify-center">
-              <Check size={11} strokeWidth={3} />
+        {/* Table Legend and Notes */}
+        <div className="p-3 sm:p-4 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 text-[11px] text-gray-600">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <div className="h-4 w-4 rounded bg-emerald-600 text-white flex items-center justify-center">
+                <Check size={11} strokeWidth={3} />
+              </div>
+              <span className="font-medium text-gray-700">Sudah Bayar</span>
             </div>
-            <span className="font-medium text-gray-700">Sudah Bayar (Klik untuk lihat/ubah tanggal & nominal)</span>
+            <div className="flex items-center gap-1.5">
+              <div className="h-4 w-4 rounded border border-gray-300 bg-white flex items-center justify-center text-[10px] text-gray-400">+</div>
+              <span className="text-gray-500">Belum Bayar</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-gray-500">
+              <span className="font-semibold text-gray-700">Bank Sampah & Uang Kas SMPN 257 Jakarta</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="h-4 w-4 rounded border border-gray-300 bg-white flex items-center justify-center text-[10px] text-gray-400">+</div>
-            <span className="text-gray-500">Belum Bayar (Klik kotak untuk catat bayar)</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-gray-500">
-            <Edit2 size={12} className="text-blue-500" />
-            <span>Klik badge kelas / nama untuk edit</span>
-          </div>
-        </div>
 
-        <div className="text-gray-500 italic">
-          {selectedYear === '2026' 
-            ? '* Tahun 2026: Kolom bulan dimulai dari Agustus (Ags-Des).' 
-            : `* Tahun ${selectedYear}: Kolom bulan otomatis lengkap mulai Januari (Jan-Des).`}
+          <div className="text-gray-500 italic">
+            {selectedYear === '2026' 
+              ? '* Tahun 2026: Kolom bulan dimulai dari Agustus (Ags-Des).' 
+              : `* Tahun ${selectedYear}: Kolom bulan otomatis lengkap mulai Januari (Jan-Des).`}
+          </div>
         </div>
       </div>
 
