@@ -1,8 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useAppStore } from '../store';
-import { Download, FileImage, Calendar, Users, ArrowLeft, CheckCircle2 } from 'lucide-react';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { Calendar, Users, ArrowLeft } from 'lucide-react';
 import { sortClasses, parseGradeOrder } from '../types';
 
 const MONTHS = [
@@ -18,9 +16,7 @@ export default function Rekap() {
   const [filterMonth, setFilterMonth] = useState<string>(MONTHS[new Date().getMonth()]);
   const [filterYear, setFilterYear] = useState<string>(new Date().getFullYear().toString());
   
-  const printRef = useRef<HTMLDivElement>(null);
-  const printAreaRef = useRef<HTMLDivElement>(null);
-  const [isExporting, setIsExporting] = useState(false);
+
 
   // Extract unique classes
   const uniqueClasses = sortClasses(Array.from(new Set(students.map(s => s.classId))));
@@ -51,127 +47,20 @@ export default function Rekap() {
   }
   displayStudents = displayStudents.sort((a, b) => a.name.localeCompare(b.name));
 
-  const exportPDF = async () => {
-    const printArea = printAreaRef.current;
-    if (!printArea) return;
-    
-    try {
-      setIsExporting(true);
-      // Wait for React to render the printable area offscreen
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      const pages = printArea.querySelectorAll('.print-page');
-      if (pages.length === 0) return;
 
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-      
-      for (let i = 0; i < pages.length; i++) {
-        const pageEl = pages[i] as HTMLElement;
-        const canvas = await html2canvas(pageEl, { 
-          scale: 3.125, // Produces highly crisp A4 (2481 x 3509 px at 300 DPI)
-          useCORS: true, 
-          allowTaint: true,
-          windowWidth: 794,
-          width: 794,
-          height: 1123,
-          backgroundColor: '#ffffff'
-        });
-        
-        const imgData = canvas.toDataURL('image/jpeg', 1.0);
-        
-        if (i > 0) {
-          pdf.addPage();
-        }
-        
-        // Fit perfectly onto standard A4 page (0 margins because padding is baked into the canvas image)
-        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
-      }
-      
-      pdf.save(`Rekap_Kelas_${selectedClass}_${filterMonth}_${filterYear}.pdf`);
-    } catch (err) {
-      console.error("Error exporting PDF:", err);
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const exportJPEG = async () => {
-    const printArea = printAreaRef.current;
-    if (!printArea) return;
-    
-    try {
-      setIsExporting(true);
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      const pages = printArea.querySelectorAll('.print-page');
-      for (let i = 0; i < pages.length; i++) {
-        const pageEl = pages[i] as HTMLElement;
-        const canvas = await html2canvas(pageEl, { 
-          scale: 3.125, // For 300 DPI resolution (2481 x 3509 px)
-          useCORS: true, 
-          allowTaint: true,
-          windowWidth: 794,
-          width: 794,
-          height: 1123,
-          backgroundColor: '#ffffff'
-        });
-        
-        const link = document.createElement('a');
-        const pageSuffix = pages.length > 1 ? `_Halaman_${i + 1}` : '';
-        link.download = `Rekap_Kelas_${selectedClass}_${filterMonth}_${filterYear}${pageSuffix}.jpeg`;
-        link.href = canvas.toDataURL('image/jpeg', 1.0);
-        link.click();
-        
-        // Prevent browser from blocking multiple quick downloads
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
-    } catch (err) {
-      console.error("Error exporting JPEG:", err);
-    } finally {
-      setIsExporting(false);
-    }
-  };
 
   // If a specific class is selected, show the month selector & report view
   if (selectedClass) {
-    const ITEMS_PER_PAGE = 22;
-    const studentChunks: (typeof displayStudents)[] = [];
-    for (let i = 0; i < displayStudents.length; i += ITEMS_PER_PAGE) {
-      studentChunks.push(displayStudents.slice(i, i + ITEMS_PER_PAGE));
-    }
-    if (studentChunks.length === 0) {
-      studentChunks.push([]);
-    }
 
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center">
           <button
             onClick={() => setSelectedClass(null)}
             className="flex items-center gap-2 text-sm font-semibold text-[#172D51] hover:text-[#34456D] transition-colors bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm"
           >
             <ArrowLeft size={16} /> Kembali ke Sub-Kelas Kelas {selectedLevel}
           </button>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={exportPDF}
-              disabled={isExporting}
-              className="flex items-center gap-2 rounded-lg bg-[#172D51] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#34456D] transition-colors disabled:opacity-50"
-            >
-              <Download size={16} /> Unduh PDF
-            </button>
-            <button
-              onClick={exportJPEG}
-              disabled={isExporting}
-              className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
-            >
-              <FileImage size={16} /> Unduh JPEG
-            </button>
-          </div>
         </div>
 
         {/* Month & Year Filter Bar */}
@@ -204,7 +93,6 @@ export default function Rekap() {
         <div className="overflow-x-auto sm:overflow-x-visible border border-gray-200 rounded-xl bg-gray-50 shadow-inner">
           <div 
             className="p-3 sm:p-10 inline-block bg-white rounded-xl min-w-0 sm:min-w-[700px] w-full" 
-            ref={printRef}
           >
             <div className="mb-0 pb-0">
               <div className="w-full">
@@ -212,193 +100,92 @@ export default function Rekap() {
               </div>
             </div>
 
-            <div className="mt-1 mb-2 text-sm font-bold text-gray-900 space-y-0.5" style={{ marginTop: '4px' }}>
-              <div>Kelas : {selectedClass}</div>
-              <div>Bulan : {filterMonth} {filterYear}</div>
-            </div>
+            {/* Konten Utama Dokumen yang diselaraskan dengan garis banner */}
+            <div className="px-2 sm:px-5">
+              <div className="mb-2 text-sm font-bold text-gray-900 space-y-0.5" style={{ marginTop: '-16px' }}>
+                <div>Kelas : {selectedClass}</div>
+                <div>Bulan : {filterMonth} {filterYear}</div>
+              </div>
 
-            <div className="max-h-[380px] sm:max-h-none overflow-y-auto sm:overflow-visible relative border border-black mb-4 rounded-sm">
-              <table className="w-full border-collapse border-none">
-                <thead>
-                  <tr className="sticky top-0 z-20">
-                    <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-center text-[10px] sm:text-xs font-bold text-gray-900 uppercase w-10 sm:w-16 sticky top-0 z-10" style={{ verticalAlign: 'middle' }}>
-                      <div className="flex items-center justify-center min-h-[16px] leading-none">NO</div>
-                    </th>
-                    <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-left text-[10px] sm:text-xs font-bold text-gray-900 uppercase sticky top-0 z-10" style={{ verticalAlign: 'middle' }}>
-                      <div className="flex items-center min-h-[16px] leading-none">NAMA</div>
-                    </th>
-                    <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-center text-[10px] sm:text-xs font-bold text-gray-900 uppercase w-14 sm:w-28 sticky top-0 z-10" style={{ verticalAlign: 'middle' }}>
-                      <div className="flex items-center justify-center min-h-[16px] leading-none">MIJEL</div>
-                    </th>
-                    <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-center text-[10px] sm:text-xs font-bold text-gray-900 uppercase w-14 sm:w-28 sticky top-0 z-10" style={{ verticalAlign: 'middle' }}>
-                      <div className="flex items-center justify-center min-h-[16px] leading-none">BS</div>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white">
-                  {displayStudents.map((student, idx) => {
-                    const record = records.find(r => 
-                      r.studentId === student.id && 
-                      r.month === filterMonth && 
-                      r.year === filterYear
-                    );
-                    
-                    return (
-                      <tr key={student.id} className="hover:bg-gray-50">
-                        <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-gray-900 text-center" style={{ verticalAlign: 'middle' }}>
-                          <div className="flex items-center justify-center min-h-[20px] leading-none">
-                            {idx + 1}
-                          </div>
-                        </td>
-                        <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-gray-900 font-semibold break-words" style={{ verticalAlign: 'middle' }}>
-                          <div className="flex items-center min-h-[20px] leading-tight">
-                            {student.name}
-                          </div>
-                        </td>
-                        <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-center font-bold" style={{ verticalAlign: 'middle' }}>
-                          <div className="flex items-center justify-center min-h-[20px] leading-none">
-                            {record?.mijel ? <span className="text-gray-900 text-base">✓</span> : <span className="text-gray-300">-</span>}
-                          </div>
-                        </td>
-                        <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-center font-bold" style={{ verticalAlign: 'middle' }}>
-                          <div className="flex items-center justify-center min-h-[20px] leading-none">
-                            {record?.bs ? <span className="text-gray-900 text-base">✓</span> : <span className="text-gray-300">-</span>}
-                          </div>
+              <div className="max-h-[380px] sm:max-h-none overflow-y-auto sm:overflow-visible relative border border-black mb-4 rounded-sm">
+                <table className="w-full border-collapse border-none">
+                  <thead>
+                    <tr className="sticky top-0 z-20">
+                      <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-center text-[10px] sm:text-xs font-bold text-gray-900 uppercase w-10 sm:w-16 sticky top-0 z-10" style={{ verticalAlign: 'middle' }}>
+                        <div className="flex items-center justify-center min-h-[16px] leading-none">NO</div>
+                      </th>
+                      <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-left text-[10px] sm:text-xs font-bold text-gray-900 uppercase sticky top-0 z-10" style={{ verticalAlign: 'middle' }}>
+                        <div className="flex items-center min-h-[16px] leading-none">NAMA</div>
+                      </th>
+                      <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-center text-[10px] sm:text-xs font-bold text-gray-900 uppercase w-14 sm:w-28 sticky top-0 z-10" style={{ verticalAlign: 'middle' }}>
+                        <div className="flex items-center justify-center min-h-[16px] leading-none">MIJEL</div>
+                      </th>
+                      <th scope="col" className="px-2 py-2 sm:px-4 sm:py-2.5 border border-black bg-[#F6B23D] text-center text-[10px] sm:text-xs font-bold text-gray-900 uppercase w-14 sm:w-28 sticky top-0 z-10" style={{ verticalAlign: 'middle' }}>
+                        <div className="flex items-center justify-center min-h-[16px] leading-none">BS</div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white">
+                    {displayStudents.map((student, idx) => {
+                      const record = records.find(r => 
+                        r.studentId === student.id && 
+                        r.month === filterMonth && 
+                        r.year === filterYear
+                      );
+                      
+                      return (
+                        <tr key={student.id} className="hover:bg-gray-50">
+                          <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-gray-900 text-center" style={{ verticalAlign: 'middle' }}>
+                            <div className="flex items-center justify-center min-h-[20px] leading-none">
+                              {idx + 1}
+                            </div>
+                          </td>
+                          <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-gray-900 font-semibold break-words" style={{ verticalAlign: 'middle' }}>
+                            <div className="flex items-center min-h-[20px] leading-tight">
+                              {student.name}
+                            </div>
+                          </td>
+                          <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-center font-bold" style={{ verticalAlign: 'middle' }}>
+                            <div className="flex items-center justify-center min-h-[20px] leading-none">
+                              {record?.mijel ? <span className="text-gray-900 text-base">✓</span> : <span className="text-gray-300">-</span>}
+                            </div>
+                          </td>
+                          <td className="px-2 py-2 sm:px-4 sm:py-3 border border-black text-[11px] sm:text-sm text-center font-bold" style={{ verticalAlign: 'middle' }}>
+                            <div className="flex items-center justify-center min-h-[20px] leading-none">
+                              {record?.bs ? <span className="text-gray-900 text-base">✓</span> : <span className="text-gray-300">-</span>}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {displayStudents.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-2 py-6 sm:px-4 sm:py-8 border border-black text-center text-sm text-gray-500">
+                          Tidak ada data siswa untuk kelas ini.
                         </td>
                       </tr>
-                    );
-                  })}
-                  {displayStudents.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-2 py-6 sm:px-4 sm:py-8 border border-black text-center text-sm text-gray-500">
-                        Tidak ada data siswa untuk kelas ini.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
-            <div className="mt-4 text-xs font-semibold text-gray-900 space-y-1">
-              <div>keterangan :</div>
-              <div>mijel : minyak jelantah</div>
-              <div>bs : bank sampah</div>
+              <div className="mt-4 text-xs font-semibold text-gray-900 space-y-1">
+                <div className="mb-1">Keterangan :</div>
+                <div className="grid grid-cols-[42px_12px_1fr] items-center">
+                  <span>Mijel</span>
+                  <span>:</span>
+                  <span>MINYAK JELANTAH</span>
+                </div>
+                <div className="grid grid-cols-[42px_12px_1fr] items-center">
+                  <span>Bs</span>
+                  <span>:</span>
+                  <span>Bank Sampah</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Hidden Off-Screen Dedicated Multi-Page Print Layout (Guarantees A4 Margins & High-DPI Output) */}
-        {isExporting && (
-          <div 
-            ref={printAreaRef} 
-            style={{ 
-              position: 'absolute', 
-              left: '-9999px', 
-              top: '0px', 
-              width: '794px', 
-              zIndex: -100, 
-              backgroundColor: '#ffffff' 
-            }}
-          >
-            {studentChunks.map((chunk, chunkIdx) => (
-              <div 
-                key={chunkIdx}
-                className="print-page bg-white relative box-border flex flex-col justify-between"
-                style={{
-                  width: '794px',
-                  height: '1123px',
-                  padding: '45px', // Exact 45px padding yields standard ~12mm physical margin on A4 print setups
-                  backgroundColor: '#ffffff'
-                }}
-              >
-                <div>
-                  {/* Header Banner - aspect-ratio perfectly preserved */}
-                  <div className="w-full mb-6">
-                    <img 
-                      src="https://i.imgur.com/e2tp2Js.png" 
-                      alt="Header Banner" 
-                      className="w-full h-auto object-contain block mx-auto" 
-                      crossOrigin="anonymous" 
-                    />
-                  </div>
-
-                  {/* Meta info */}
-                  <div className="mb-4 text-sm font-bold text-gray-900 space-y-0.5" style={{ marginTop: '4px' }}>
-                    <div>Kelas : {selectedClass}</div>
-                    <div>Bulan : {filterMonth} {filterYear}</div>
-                  </div>
-
-                  {/* Table with crisp alignments */}
-                  <table className="w-full border-collapse border border-black text-xs">
-                    <thead>
-                      <tr>
-                        <th scope="col" className="px-3 py-2 border border-black bg-[#F6B23D] text-center font-bold text-gray-900 uppercase w-12" style={{ verticalAlign: 'middle' }}>
-                          <div className="flex items-center justify-center min-h-[16px] leading-none">NO</div>
-                        </th>
-                        <th scope="col" className="px-3 py-2 border border-black bg-[#F6B23D] text-left font-bold text-gray-900 uppercase" style={{ verticalAlign: 'middle' }}>
-                          <div className="flex items-center min-h-[16px] leading-none">NAMA</div>
-                        </th>
-                        <th scope="col" className="px-3 py-2 border border-black bg-[#F6B23D] text-center font-bold text-gray-900 uppercase w-24" style={{ verticalAlign: 'middle' }}>
-                          <div className="flex items-center justify-center min-h-[16px] leading-none">MIJEL</div>
-                        </th>
-                        <th scope="col" className="px-3 py-2 border border-black bg-[#F6B23D] text-center font-bold text-gray-900 uppercase w-24" style={{ verticalAlign: 'middle' }}>
-                          <div className="flex items-center justify-center min-h-[16px] leading-none">BS</div>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white">
-                      {chunk.map((student, idx) => {
-                        const globalIndex = chunkIdx * ITEMS_PER_PAGE + idx + 1;
-                        const record = records.find(r => 
-                          r.studentId === student.id && 
-                          r.month === filterMonth && 
-                          r.year === filterYear
-                        );
-                        
-                        return (
-                          <tr key={student.id}>
-                            <td className="px-3 py-1.5 border border-black text-gray-900 text-center" style={{ verticalAlign: 'middle' }}>
-                              <div className="flex items-center justify-center min-h-[22px] leading-none">
-                                {globalIndex}
-                              </div>
-                            </td>
-                            <td className="px-3 py-1.5 border border-black text-gray-900 font-semibold break-words" style={{ verticalAlign: 'middle' }}>
-                              <div className="flex items-center min-h-[22px] leading-tight">
-                                {student.name}
-                              </div>
-                            </td>
-                            <td className="px-3 py-1.5 border border-black text-center font-bold" style={{ verticalAlign: 'middle' }}>
-                              <div className="flex items-center justify-center min-h-[22px] leading-none">
-                                {record?.mijel ? <span className="text-gray-900 text-sm">✓</span> : <span className="text-gray-300">-</span>}
-                              </div>
-                            </td>
-                            <td className="px-3 py-1.5 border border-black text-center font-bold" style={{ verticalAlign: 'middle' }}>
-                              <div className="flex items-center justify-center min-h-[22px] leading-none">
-                                {record?.bs ? <span className="text-gray-900 text-sm">✓</span> : <span className="text-gray-300">-</span>}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Footer Keterangan & Paginasi */}
-                <div className="border-t border-gray-200 pt-3 flex items-end justify-between text-xs font-semibold text-gray-500">
-                  <div className="space-y-1">
-                    <div>keterangan :</div>
-                    <div>mijel : minyak jelantah</div>
-                    <div>bs : bank sampah</div>
-                  </div>
-                  <div>
-                    Halaman {chunkIdx + 1} dari {studentChunks.length}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     );
   }

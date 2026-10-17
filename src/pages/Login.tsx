@@ -12,11 +12,10 @@ export default function Login({ onLogin }: LoginProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simple mock authentication
-    if (id && password) {
+    if (id === 'admin' && password === '1234') {
       onLogin();
     } else {
-      setError('Harap masukkan ID dan Password');
+      setError('ID Pengguna atau Password salah');
     }
   };
 

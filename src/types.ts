@@ -15,6 +15,19 @@ export interface ActivityRecord {
   createdAt: number;
 }
 
+export interface CashRecord {
+  id: string;
+  parentName: string;
+  studentName?: string;
+  classId: string;
+  month: string;
+  year: string;
+  amount?: number;
+  paid: boolean;
+  notes?: string;
+  updatedAt?: number;
+}
+
 export function parseGradeOrder(str: string): number {
   const romanMap: Record<string, number> = {
     I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6,

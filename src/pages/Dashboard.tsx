@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAppStore } from '../store';
 import { Users, GraduationCap, Activity, Recycle } from 'lucide-react';
+import CashTableCard from '../components/CashTableCard';
 
 export default function Dashboard() {
   const { students, records } = useAppStore();
@@ -23,7 +24,20 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold tracking-tight text-gray-900">Dashboard</h1>
-        <p className="text-sm text-gray-500">Ringkasan data Bank Sampah SMPN 257 Jakarta.</p>
+        <p className="text-sm text-gray-500">Ringkasan data Bank Sampah dan Uang Kas SMPN 257 Jakarta.</p>
+      </div>
+
+      {/* Card Sapaan dengan Logo */}
+      <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col md:flex-row items-center gap-6 bg-gradient-to-r from-white to-blue-50/10">
+        <img src="https://i.imgur.com/2XP7suZ.png" alt="Logo Sekolah" className="h-20 sm:h-24 w-auto object-contain shrink-0" />
+        <div className="space-y-2 text-center md:text-left">
+          <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight leading-tight">
+            Selamat Datang di Portal Bank Sampah!
+          </h2>
+          <p className="text-sm text-gray-500 leading-relaxed max-w-2xl">
+            Sistem pendataan tabungan minyak jelantah (mijel) dan bank sampah (bs) siswa kelas untuk mewujudkan SMPN 257 Jakarta yang hijau, bersih, dan asri.
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
@@ -40,13 +54,8 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="mt-8 rounded-xl bg-white p-6 shadow-sm border border-gray-100 text-center py-10 sm:py-16">
-        <img src="https://i.imgur.com/2XP7suZ.png" alt="Logo" className="h-24 sm:h-32 w-auto mx-auto opacity-30 mb-6" />
-        <h2 className="text-lg sm:text-xl font-bold text-gray-900">Selamat datang di Sistem Bank Sampah</h2>
-        <p className="mt-2 text-sm text-gray-500 max-w-lg mx-auto leading-relaxed">
-          Gunakan menu di samping (atau di bawah pada perangkat HP) untuk mulai mendata kegiatan, melihat rekap, dan mengelola database siswa.
-        </p>
-      </div>
+      {/* Card Baru: Tabel Uang Kas Format Excel */}
+      <CashTableCard />
     </div>
   );
 }
