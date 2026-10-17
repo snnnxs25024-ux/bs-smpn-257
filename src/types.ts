@@ -24,6 +24,7 @@ export interface CashRecord {
   year: string;
   amount?: number;
   paid: boolean;
+  paymentDate?: string;
   notes?: string;
   updatedAt?: number;
 }

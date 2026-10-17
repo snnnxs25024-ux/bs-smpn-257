@@ -168,6 +168,53 @@ export function useAppStore() {
     }
   };
 
+  const setCashPaymentDetail = async (
+    parentName: string,
+    classId: string,
+    month: string,
+    year: string,
+    paid: boolean,
+    amount: number = 0,
+    paymentDate: string = ''
+  ) => {
+    const id = `${classId}-${parentName.trim()}-${month}-${year}`.replace(/\s+/g, '_').toLowerCase();
+    const existingIndex = cashRecords.findIndex(r => 
+      r.classId === classId && 
+      r.parentName.trim().toLowerCase() === parentName.trim().toLowerCase() && 
+      r.month === month && 
+      r.year === year
+    );
+
+    let updated: CashRecord[];
+    if (existingIndex >= 0) {
+      const current = cashRecords[existingIndex];
+      updated = [...cashRecords];
+      updated[existingIndex] = {
+        ...current,
+        paid,
+        amount: paid ? amount : 0,
+        paymentDate: paid ? paymentDate : '',
+        updatedAt: Date.now()
+      };
+    } else {
+      const newRecord: CashRecord = {
+        id,
+        parentName: parentName.trim(),
+        classId,
+        month,
+        year,
+        paid,
+        amount: paid ? amount : 0,
+        paymentDate: paid ? paymentDate : '',
+        updatedAt: Date.now()
+      };
+      updated = [...cashRecords, newRecord];
+    }
+
+    await saveCashRecords(updated);
+    showToast(paid ? `Kas ${month} Rp ${amount.toLocaleString('id-ID')} tersimpan!` : `Status ${month} diubah belum bayar`, 'success');
+  };
+
   const toggleCashPayment = async (parentName: string, studentName: string | undefined, classId: string, month: string, year: string) => {
     const id = `${classId}-${parentName.trim()}-${month}-${year}`.replace(/\s+/g, '_').toLowerCase();
     const existingIndex = cashRecords.findIndex(r => 
@@ -181,13 +228,17 @@ export function useAppStore() {
     if (existingIndex >= 0) {
       const current = cashRecords[existingIndex];
       const newStatus = !current.paid;
+      const todayStr = new Date().toISOString().split('T')[0];
       updated = [...cashRecords];
       updated[existingIndex] = {
         ...current,
         paid: newStatus,
+        paymentDate: newStatus ? (current.paymentDate || todayStr) : '',
+        amount: newStatus ? (current.amount || 10000) : 0,
         updatedAt: Date.now()
       };
     } else {
+      const todayStr = new Date().toISOString().split('T')[0];
       const newRecord: CashRecord = {
         id,
         parentName: parentName.trim(),
@@ -196,6 +247,8 @@ export function useAppStore() {
         month,
         year,
         paid: true,
+        amount: 10000,
+        paymentDate: todayStr,
         updatedAt: Date.now()
       };
       updated = [...cashRecords, newRecord];
@@ -295,6 +348,7 @@ export function useAppStore() {
     cashRecords,
     saveCashRecords,
     toggleCashPayment,
+    setCashPaymentDetail,
     addCashMember,
     deleteCashMember,
     updateCashMemberClass,
