@@ -332,7 +332,7 @@ export default function CashTableCard() {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(12);
       doc.setTextColor(17, 24, 39);
-      doc.text('LAPORAN REKAPITULASI PEMBAYARAN UANG KAS WALI MURID', pageWidth / 2, 40, { align: 'center' });
+      doc.text('LAPORAN REKAPITULASI PEMBAYARAN UANG KAS KOMITE', pageWidth / 2, 40, { align: 'center' });
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
@@ -353,7 +353,7 @@ export default function CashTableCard() {
       // Header Kolom
       const headColumns = [
         'NO',
-        'NAMA WALI MURID',
+        'NAMA KOMITE',
         'KELAS',
         ...visibleMonths.map(m => (SHORT_ALL_MONTHS[m] || m).toUpperCase()),
         'TOTAL KAS'
@@ -502,10 +502,10 @@ export default function CashTableCard() {
 
       // 6. SIMPAN DOKUMEN PDF VEKTOR
       const cleanClass = selectedClassFilter.replace(/\s+/g, '_');
-      const fileName = `Laporan_Uang_Kas_SMPN257_${cleanClass}_${selectedYear}.pdf`;
+      const fileName = `Laporan_Uang_Kas_Komite_SMPN257_${cleanClass}_${selectedYear}.pdf`;
       doc.save(fileName);
 
-      showToast('PDF resmi berhasil diunduh dengan kualitas vektor jernih!', 'success');
+      showToast('PDF resmi Uang Kas Komite berhasil diunduh!', 'success');
     } catch (error: any) {
       console.error('Error generating PDF:', error);
       showToast('Gagal membuat PDF: ' + (error.message || 'Terjadi kesalahan'), 'error');
@@ -521,7 +521,7 @@ export default function CashTableCard() {
     const data = filteredMembers.map((m, idx) => {
       const row: Record<string, any> = {
         'NO': idx + 1,
-        'NAMA WALI MURID': m.parentName,
+        'NAMA KOMITE': m.parentName,
         'KELAS': m.classId,
       };
 
@@ -564,14 +564,14 @@ export default function CashTableCard() {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
-                  Tabel Uang Kas Wali Murid
+                  Tabel Uang Kas Komite
                 </h3>
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800">
                   CRUD & Setoran
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-                Kelola nama wali murid & kelas secara manual, catat tanggal bayar, nominal kas, dan pantau status bulanan.
+                Kelola nama anggota komite & kelas secara manual, catat tanggal bayar, nominal kas, dan pantau status bulanan.
               </p>
             </div>
           </div>
@@ -583,7 +583,7 @@ export default function CashTableCard() {
               className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-[#172D51] text-white hover:bg-[#34456D] shadow-sm transition-colors"
             >
               <Plus size={16} />
-              Tambah Wali Murid
+              Tambah Anggota Komite
             </button>
             <button
               onClick={handleDownloadPDF}
@@ -655,7 +655,7 @@ export default function CashTableCard() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari wali / kelas..."
+                placeholder="Cari nama komite / kelas..."
                 className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#172D51] text-gray-800"
               />
               {searchQuery && (
@@ -691,7 +691,7 @@ export default function CashTableCard() {
           <form onSubmit={handleAddSubmit} className="mt-4 p-4 rounded-xl bg-gray-50 border border-gray-200 flex flex-wrap items-end gap-3 animate-fade-in">
             <div className="flex-1 min-w-[180px]">
               <label className="block text-[11px] font-semibold text-gray-700 mb-1">
-                Nama Wali Murid <span className="text-red-500">*</span>
+                Nama Anggota Komite <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -745,7 +745,7 @@ export default function CashTableCard() {
                   NO
                 </th>
                 <th scope="col" className="px-4 py-3 font-bold min-w-[180px] tracking-wider">
-                  NAMA WALI MURID
+                  NAMA KOMITE
                 </th>
                 <th scope="col" className="px-3 py-3 font-bold text-center w-24 tracking-wider">
                   KELAS
@@ -776,7 +776,7 @@ export default function CashTableCard() {
                 <td colSpan={visibleMonths.length + 4} className="text-center py-12 px-4 text-gray-500">
                   <div className="flex flex-col items-center justify-center">
                     <Users size={32} className="text-gray-300 mb-2" />
-                    <p className="text-sm font-medium text-gray-700">Tidak ada wali murid yang sesuai filter.</p>
+                    <p className="text-sm font-medium text-gray-700">Tidak ada anggota komite yang sesuai filter.</p>
                   </div>
                 </td>
               </tr>

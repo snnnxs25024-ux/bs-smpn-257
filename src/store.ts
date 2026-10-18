@@ -299,7 +299,7 @@ export function useAppStore() {
     });
 
     await saveCashRecords(updated);
-    showToast(`Nama wali murid diperbarui menjadi ${cleanNew}!`, 'success');
+    showToast(`Nama anggota komite diperbarui menjadi ${cleanNew}!`, 'success');
   };
 
   const addCashMember = async (parentName: string, classId: string) => {
@@ -310,7 +310,7 @@ export function useAppStore() {
     
     const exists = cashRecords.some(r => r.classId === classId && r.parentName.trim().toLowerCase() === parentName.trim().toLowerCase());
     if (exists) {
-      showToast('Wali murid ini sudah terdaftar di kelas ini.', 'info');
+      showToast('Anggota komite ini sudah terdaftar di kelas ini.', 'info');
       return;
     }
 
@@ -326,13 +326,13 @@ export function useAppStore() {
 
     const updated = [...cashRecords, newRecord];
     await saveCashRecords(updated);
-    showToast('Data Wali Murid berhasil ditambahkan!', 'success');
+    showToast('Data Anggota Komite berhasil ditambahkan!', 'success');
   };
 
   const deleteCashMember = async (parentName: string, classId: string) => {
     const updated = cashRecords.filter(r => !(r.classId === classId && r.parentName.trim().toLowerCase() === parentName.trim().toLowerCase()));
     await saveCashRecords(updated);
-    showToast('Data Wali Murid dihapus dari Uang Kas.', 'info');
+    showToast('Data Anggota Komite dihapus dari Uang Kas.', 'info');
   };
 
   return { 
